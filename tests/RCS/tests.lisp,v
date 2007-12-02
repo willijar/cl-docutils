@@ -1,0 +1,50 @@
+head	1.1;
+access;
+symbols;
+locks
+	willijar:1.1; strict;
+comment	@;;; @;
+
+
+1.1
+date	2006.07.04.12.36.11;	author willijar;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@;; some testing data
+
+(in-package :docutils.parser.rst)
+
+(setf (logical-pathname-translations "DOCUTILS")
+      '(("TEST;" "/home/willijar/dev/lisp/src/docutils/tests/*.txt")))
+
+(defun run-tests(&optional (dir (translate-logical-pathname "DOCUTILS:TEST;"))
+                 (os *debug-io*))
+  (let ((reader (make-instance 'docutils.parser.rst:rst-reader))
+        (writer (make-instance 'docutils.writer.html:html-writer)))
+    (dolist(fname (directory dir))
+      (format os "~%~%;; ~A~%" fname)
+      (let ((document (docutils:read-document fname reader)))
+        (setf *document* document)
+        (with-open-file(os (merge-pathnames (make-pathname :type "lisp") fname)
+                           :direction  :output
+                           :if-exists :overwrite
+                           :if-does-not-exist :create)
+          (princ (as-sexp document) os))
+        (with-open-file(os (merge-pathnames (make-pathname :type "html") fname)
+                           :direction  :output
+                           :if-exists :overwrite
+                           :if-does-not-exist :create)
+          (docutils:write-document writer document os))))))
+
+@

@@ -1,0 +1,135 @@
+head	1.4;
+access;
+symbols;
+locks
+	willijar:1.4; strict;
+comment	@# @;
+
+
+1.4
+date	2006.07.28.14.05.15;	author willijar;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2006.07.28.14.02.22;	author willijar;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2006.07.28.14.02.12;	author willijar;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2006.07.28.14.01.55;	author willijar;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@*** empty log message ***
+@
+text
+@Nyquist Sampling Theorem
+========================
+
+:abstract: On completion you should be able to state and explain the
+           Nyquist Sampling Theorem 
+:author:   Dr. John A.R. Williams
+:outcomes: 
+           :`Analogue Pulse Modulation`_: 1/4
+:modified: $Date: 2006/07/28 14:02:22 $
+:revision: $Revision$
+
+..target: Nyquist Sampling Theorem Figure
+..figure:: nyquist.eps
+  :alt: Nyquist Sampling Theorem
+  :width 100%
+  
+  Nyquist Sampling Theorem
+
+From what we have learn't in the tutorial on modulation basics we know
+that if we sample a signal at regular instants in time we are going to
+produce a periodic spectrum. Nyquists theorem is concerned with
+knowing how often we sample the signal to that we can reproduce it
+witout distortion. If we have a signal strictly bandlimited to
+bandwidth `W`:math: and at regular intervals seperated by `T`:math:
+seconds (rate `1/T`:math) then the resulting spectrum is going to be
+copys of the spectrum seperate by `1/T`:math: Hz as shown in the
+`Nyquist Sampling Theorem Figure`_.
+
+Note that because we are modulating the original signal we see its
+whole double sided spectrum of width `2W`:math:copied at frequency
+intervals of `1/T`:math: Therefore we see that if `T \le 1/(2W)`:math:
+these multiple copies of the signal spectrum are completed separated,
+and we could filter out one to regenerate the original signal without
+distortion. However if we sample at too low a rate, `T > 1/(2W)`:math:
+then we see that there is overlap between the copies in the sampled
+spectrum and there would be distortion in the recovered
+signal. Therefore we can state the requirements for sampling, the
+*Nyquist Sampling Theorem* as follows:
+
+.. important:: A band-limited signal of finite energy, which has no
+   frequency components higher than `W`:math: " Hz is completely
+   described by sampling values of the signal at instants of time
+   separated by `1/2W`:math: seconds.
+
+If we do not satisfy this criterion we cannot recover the original
+signal. In particular we may see frequency components which do not
+exist in the original signal. This is called *aliasing*. For example
+if we have a 4 kHz input signal and sample at a rate of only 5 kHz we
+will see frequency components at (5+4)=9kHz which is removed by a low
+pass filter and at (5-4)=1kHz which isn't i.e. we will see a 1kHz
+signal after low pass filtering a 4kHz signal sampled at only 5kHz .
+
+An example, which you may see in the laboratory, is that when using a
+digital sampling oscilloscope which has too low a sample rate
+(i.e. with a low time base set) and we look at high frequencies. We
+may actually see low frequency aliased signals which are not present
+at the input to the oscilloscope. Care must therefore be taken when
+using such instruments - in particuar if the frequency of the signal
+you are measuring changes as you change the timebase (sample rate)
+then it is probably oscilloscope aliasing that you are seeing.
+@
+
+
+1.3
+log
+@*** empty log message ***
+@
+text
+@d9 2
+a10 2
+:modified: $Date: 2006/07/28 14:02:12 $
+:revision: $version$
+@
+
+
+1.2
+log
+@*** empty log message ***
+@
+text
+@d9 2
+a10 2
+:modified: $Date: 2006/07/28 14:01:55 $
+:revision: $rev$
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d9 2
+a10 2
+:modified: $Date$
+:revision: $revision$
+@

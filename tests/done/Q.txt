@@ -1,0 +1,69 @@
+Testing Questionnaires
+======================
+
+.. questionnaire:: Test Questionnaire
+  :timelimit: 600
+  :deadline-date: 2006-11-29 23:59
+
+  This is a test of the questionnaire handling.
+
+  With some questions:
+
+  .. multiple-answer:: compand
+
+    :question: Which of the following statements about companding are true
+    :choices:
+      :1: Companding is a bit reduction technique
+      :2: Companding increases the quantisation SNR for weak signals
+      :3: Companding degrades the analogue signal
+      :4: The companding characteristic has a linear and a logarithmic
+          proportion
+      :5: Companding is often implemented using a segmented linear
+          quantisation characteristic.
+    :answer: '(list 1 2 4 5)
+    :feedback: 
+      Companding does not degrade the analogue signal. Its
+      purpose is to improve the signal to noise ratio, and while the signal
+      to noise ratio for large signals is increased overall the SNR is much
+      improved with companding.
+
+  .. multiple-choice:: dpcm
+     
+    :question: In differential pulse code modulation (DPCM) do we
+    :choices: 
+       :1: Transmit the integral of the signal
+       :2: Transmit differences between actual sampled
+           amplitudes and predicted amplitudes
+       :3: Adapt the quantisation characteristic as the average
+           signal amplitude varies
+       :4: Have a quantisation characteristic which has small
+           steps for small amplitudes and large steps for
+           larger amplitudes
+       :5: Transmit an estimate of the signal
+    :answer: 2
+    :feedback: 
+       In DPCM we use transmit differences between actual sampled
+       amplitudes and amplitudes predicted using a linear combination of
+       previous samples. This difference will be much smaller than the
+       signal amplitude and so will require less bits to represent it.
+
+  .. numeric:: Nyquist
+     :params: (omega (+ 50 (random 500)))
+              (a (+ 1 (random 25)))
+              (n  (/ omega pi))
+
+     :question: A waveform, `a`:eval: + `a`:eval: sin(`omega`:eval:
+                t+0.7) is to be sampled periodically and reproduced from these
+                sample values. How many sample values must be stored
+                to reproduce 1 sec of this waveform.
+     :weighting: 0.5
+     :format: "~,2f"
+     :answer: n
+     :tol: (/ 1.1 n)
+     :feedback: The frequency of this waveform is `omega`:eval: /2
+                `\pi`:math: = `"~,2f" (* 2 n)`:eval: Hz .
+                We require (from Nyquist sampling 
+                theorem) at least 2 samples per period, so the sample
+                frequency must be `"~,3f" n`:eval: Hz.
+
+

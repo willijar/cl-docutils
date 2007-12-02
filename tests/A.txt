@@ -1,0 +1,24 @@
+=============
+SNR in DSB-AM
+=============
+
+:author:  Dr. John A.R. Williams
+:authorids:  willijar
+:date:  2001/04/05 08:19:19.734 GMT+1
+:summary:  On completing this section you should be able to calculate
+    the effect on the signal to noise ratio of DSB-AM with synchronous
+    detection 
+:outcomes: 
+    : `Noise in Continuous-Wave Systems`_:  1/2
+
+
+We wish to compare  `\mbox{SNR}_o`:math: with  `\mbox{SNR}_i`:math: . It
+is common to define a  *figure-of-merit* for noise performance as the
+ratio  `\mbox{SNR}_o/\mbox{SNR}_i`:math: . Care must be taken as there
+are several different measures of  `\mbox{SNR}_i`:math: .
+
+.. figure:: adaptive-prediction-be.eps
+   :alt: Adaptive Prediction with backward estimation (APB)
+   :width: 70%
+
+   Adaptive Prediction with backward estimation (APB)
