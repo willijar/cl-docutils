@@ -164,7 +164,7 @@ lambda-list::= ({var | (var [specializer])}*
 (defmethod parse-input((spec (eql 'align)) input &key &allow-other-keys)
   (if (member input '("top" "middle" "bottom" "left" "center" "right")
               :test #'string-equal)
-      input
+      (intern input :keyword)
       (invalid-input input "Not a valid alignment argument")))
 
 (defmethod parse-input((spec (eql 'class)) input &key &allow-other-keys)

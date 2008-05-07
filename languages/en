@@ -76,4 +76,6 @@
  ("url" . "uri-reference")
  ("uri-reference" . "uri-reference")
  (:author-separators #\; #\,)
+ (:babel . "english")     ;; latex babel language
+ (:latex-quotes "``" "''") ;; latex quotes
  ("Warning" . "warning"))

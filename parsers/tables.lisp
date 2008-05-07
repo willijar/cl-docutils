@@ -152,8 +152,8 @@ syntax-specific parsers."))
             (multiple-value-bind(bottom right rowseps colseps ok-p)
                 (scan-cell parser top left)
               (when ok-p
-                (setf (rowseps parser) (nunion rowseps (rowseps parser)))
-                (setf (colseps parser) (nunion colseps (colseps parser)))
+                (setf (rowseps parser) (union rowseps (rowseps parser)))
+                (setf (colseps parser) (union colseps (colseps parser)))
                 (mark-done (done parser) top left bottom right)
                 (push (list
                        top left bottom right

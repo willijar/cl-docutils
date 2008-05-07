@@ -51,7 +51,8 @@
      #:make-id #:normalise-name #:whitespace-normalise-name #:indented-block
      #:indent-level #:line-length #:rstrip #:strip #:lstrip #:wsp-char-p
      #:canonical-text #:translated-text #:*language* #:author-separators
-     #:read-lines #:translate-text #:canonical-text))
+     #:read-lines #:translate-text #:canonical-text #:babel #:latex-quotes
+     #:latex-double-quote-replacement))
 
 (defpackage :docutils
   (:documentation "Document handling and structured text parsing")
@@ -88,7 +89,6 @@
    #:add-backref
    ;; settings interface
    #:register-settings-spec #:setting ))
-
 
 (defpackage :docutils.transform
   (:documentation "Package containing standard docutils Node names")

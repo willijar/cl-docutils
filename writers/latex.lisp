@@ -6,221 +6,215 @@
 
 ;;;; $Id: html.lisp,v 1.4 2006/07/07 18:43:20 willijar Exp $
 
-(in-package :docutils.writer.latex)
-
-
 (defpackage :docutils.writer.latex
   (:documentation "Latex writer for docutils")
-  (:use :cl :docutils  :docutils.utilities  :docutils.nodes :ppcre)
+  (:use :cl :docutils  :docutils.utilities  :docutils.nodes :cl-ppcre)
   (:shadowing-import-from :cl #:warning #:error #:inline #:special)
   (:import-from :jarw.lib #:when-bind #:is-prefix-p)
   (:import-from :split-sequence #:split-sequence)
   (:export #:latex-writer))
 
-(defparameter latex-named-character-map
-  '((:|dagger| . "\\dag")
-    (:|Dagger| . "\\ddag")
-    (:|sect| . "\\S")
-    (:|para| . "\\P")
-    (:|pilcrow| ."\\P")
-    (:|spades| . "\\spadesuit")
-    (:|hearts| ."\\heartsuit")
-    (:|diams| . "\\diamondsuit")
-    (:|clubs| . "\\clubsuit")))
-
+(in-package :docutils.writer.latex)
 
 (docutils:register-settings-spec
- `((:latex-documentclass
-    string "article"
-    "Specify documentclass.")
-   (:latex-document-options
-    string "10pt,a4paper"
-    "Specify document options.  Multiple options can be given, separated by commas.")
-   (:use-latex-footnotes
-    boolean nil
-    "Use LaTeX footnotes. LaTeX supports only numbered footnotes (does it?). Default: no, uses figures.")
+ `((:latex-document-class  string "article"  "Specify documentclass.")
+   (:latex-document-options  string "10pt,a4paper"
+    "Specify document options.  Multiple options can be given,
+    separated by commas.")
+   (:use-latex-footnotes boolean nil
+    "Use LaTeX footnotes. LaTeX supports only numbered footnotes (does
+    it?). Default: no, uses figures.")
    (:footnote-references
     (member :type symbol :set (:superscript :brackets)) :brackets
     "Format for footnote references: one of :superscript or :brackets.")
-   (:use-latex-citations
-    boolean nil
+   (:use-latex-citations  boolean nil
     "Default: no, uses figures which might get mixed with images.")
    (:attribution
     (member :type (symbol :nil-allowed t) :set (:dash :parentheses nil)) :dash
     "Format for block quote attributions: one of 'dash',
 'parentheses' or 'nil'")
-   (:latex-stylesheet
-    pathname nil
+   (:latex-stylesheet  pathname nil
     "Specify a stylesheet file. The file will be \"input\" by latex in '
      the document header.  Default is no stylesheet")
-   (:stylesheet-path
-    pathname nil
-   "Specify a stylesheet file, relative to the current working directory.  Overrides --stylesheet.")
-   (:use-latex-toc
-    boolean nil
-    "Table of contents by docutils (default) or latex. Latex (writer) supports only one ToC per document, but docutils does not write  pagenumbers.")
-   (:use-latex-docinfo
-    boolean nil
+   (:stylesheet-path pathname nil
+   "Specify a stylesheet file, relative to the current working
+   directory.  Overrides --stylesheet.")
+   (:use-latex-toc boolean nil
+    "Table of contents by docutils (default) or latex. Latex (writer)
+    supports only one ToC per document, but docutils does not write
+    pagenumbers.")
+   (:use-latex-docinfo boolean nil
     "Let LaTeX print author and date, do not show it in docutils
      document info.")
-   (:hyperlink-colour
-    string "blue"
+   (:hyperlink-colour string "blue"
     "Color of any hyperlinks embedded in text")
-   (:compound-enumerators
-    boolean nil
+   (:compound-enumerators  boolean nil
     "Enable compound enumerators for nested enumerated lists ")
-   (:section-prefix-for-enumerators
-    boolean nil
-    "Enable section (\".\" subsection ...) prefixes for compound enumerators.  This has no effect without :compound-enumerators.")
-   (:section-enumerator-separator
-    string "-"
-    "Set the separator between section number and enumerator for compound enumerated lists.")
-   (:use-verbatim-when-possible
-    boolean nil
-    "When possibile, use verbatim for literal-blocks. Default is to always use the mbox environment.")
+   (:section-prefix-for-enumerators  boolean nil
+    "Enable section (\".\" subsection ...) prefixes for compound
+    enumerators.  This has no effect without :compound-enumerators.")
+   (:section-enumerator-separator string "-"
+    "Set the separator between section number and enumerator for
+    compound enumerated lists.")
+   (:use-verbatim-when-possible boolean nil
+    "When possibile, use verbatim for literal-blocks. Default is to
+    always use the mbox environment.")
    (:table-style
     (member :type symbol :set (:standard :booktabs :nolines)) :standard
-    "Table style. \"standard\" with horizontal and vertical lines, \"booktabs\" (LaTeX booktabs style) only horizontal lines above and below the table and below the header or \"nolines\".")
+    "Table style. \"standard\" with horizontal and vertical lines,
+    \"booktabs\" (LaTeX booktabs style) only horizontal lines above
+    and below the table and below the header or \"nolines\".")
    (:graphicx-option
     (member :type (symbol :nil-allowed t) :set (:dvips :pdftex :auto nil)) nil
-    "LaTeX graphicx package option. Possible values are \"dvips\", \"pdftex\". \"auto\" includes LaTeX code to use \"pdftex\" if processing with pdf(la)tex and dvips otherwise.")
-   (:latex-font-encoding
-    string "ae"
-    "Possible values are \"T1\", \"OT1\", \"\" or some other fontenc option. The font encoding influences available symbols, e.g. \"<<\" as one character. Default is "" which leads to package \"ae\" (a T1 emulation using CM fonts).")))
+    "LaTeX graphicx package option. Possible values are \"dvips\",
+    \"pdftex\". \"auto\" includes LaTeX code to use \"pdftex\" if
+    processing with pdf(la)tex and dvips otherwise.")
+   (:latex-font-encoding string ""
+    "Possible values are \"T1\", \"OT1\", \"\" or some other fontenc
+    option. The font encoding influences available symbols,
+    e.g. \"<<\" as one character. Default is "" which leads to package
+    \"ae\" (a T1 emulation using CM fonts).")))
 
-(defclass table()
-  ((latex-type :initform "longtable" :initarg :latex-type)
-   (table-style :initform "booktabs" :initarg :table-style)
-   (open :initform nil :reader open-p)
-   (caption :initform nil)
-   (attrs :initform nil)
+(defclass latex-table()
+  ((latex-type :initform "longtable" :initarg :latex-type :reader latex-type)
+   (table-style :initform "booktabs" :initarg :table-style :reader table-style)
+   (open :initform nil :accessor open-p)
+   (caption :initform nil :reader caption)
+   (attributes :initform nil)
    (col-width :initform nil)
+   (preamble-written :initform nil)
    col-specs in-head
+   (cell-in-row :reader entry-number)
    (rowspan :initform nil))
   (:documentation " Manage a table while traversing.
         Maybe change to a mixin defining the visit/departs, but then
         class Table internal variables are in the Translator."))
-(defun set-slots(entity slots values)
-  (map nil #'(lambda(s v) (setf (slot-value entity s) v))))
-(defun open-table(table)
-  (set-slots table
-             '(open col-specs caption attrs in-head)
-             '(t  nil      nil     nil   nil)))
-(defun close-table(table)
-  (set-slots table
-             '(open colspecs caption attrs)
-             '(nil nil nil nil)))
+
+(flet ((set-slots(entity slots values)
+         (map nil
+              #'(lambda(s v) (setf (slot-value entity s) v))
+              slots values )))
+  (defun open-table(table)
+    (set-slots table
+               '(open col-specs caption attrs in-head preamble-written)
+               '(t  nil      nil     nil   nil nil)))
+
+  (defun close-table(table)
+    (set-slots table
+               '(open colspecs caption attrs)
+               '(nil nil nil nil))))
+
 (defun used-packages(table)
-  (if (equal (slot-value table 'table-style) "booktabs")
+  (if (equal (table-style table) "booktabs")
       "\\usepackage{booktabs}"
       ""))
 
-(defclass babel
-    ((language :reader language :initarg :lang)
-     (iso639-to-babel
-      :allocation :class
-      :initform
-      '(("no" . "norsk")     ;;XXX added by hand ( forget about nynorsk?)
-        ("gd" . "scottish")  ;;XXX added by hand
-        ("hu" . "magyar")    ;;XXX added by hand
-        ("pt" . "portuguese");;XXX added by hand
-        ("sl" . "slovenian")
-        ("af" . "afrikaans")
-        ("bg" . "bulgarian")
-        ("br" . "breton")
-        ("ca" . "catalan")
-        ("cs" . "czech")
-        ("cy" . "welsh")
-        ("da" . "danish")
-        ("fr" . "french")
-        ;; french francais canadien acadian
-        ("de" . "ngerman")  ;;XXX rather than german
-        ;; ngerman naustrian german germanb austrian
-        ("el" . "greek")
-        ("en" . "english")
-        ;; english USenglish american UKenglish british canadian
-        ("eo" . "esperanto")
-        ("es" . "spanish")
-        ("et" . "estonian")
-        ("eu" . "basque")
-        ("fi" . "finnish")
-        ("ga" . "irish")
-        ("gl" . "galician")
-        ("he" . "hebrew")
-        ("hr" . "croatian")
-        ("hu" . "hungarian")
-        ("is" . "icelandic")
-        ("it" . "italian")
-        ("la" . "latin")
-        ("nl" . "dutch")
-        ("pl" . "polish")
-        ("pt" . "portuguese")
-        ("ro" . "romanian")
-        ("ru" . "russian")
-        ("sk" . "slovak")
-        ("sr" . "serbian")
-        ("sv" . "swedish")
-        ("tr" . "turkish")
-        ("uk" . "ukrainian")))
-     (double-quote-replacement :initform nil)
-     (quotes :initform #("``" "''"))
-     (quote-index :initform 0))
-  (:documentaton "Language specifics for LaTeX."))
+(defun vertical-bar(table)
+  (if (equal (table-style table) "standard") "|" ""))
 
-(defmethod initialize-instance :after ((babel babel) &key &allow-other-keys)
-  (when (is-prefix-p "de" (language babel))
-    (setf (slot-value babel 'quotes) #("{\\glqq}" "{\\grqq}")
-          (slot-value babel 'double-quote-replacement) "{\\dq}")))
+(defun opening(table)
+  (format nil "\\begin{~A}[c]~%" (latex-type table)))
 
-(defun next-quote(babel)
-  (with-slots(quotes quote-index) babel
-    (let ((q (aref quotes quote-index)))
-      (setf quote-index (mod (1+ quote-index) 2))
-      q)))
+(defun closing(table)
+  (let ((style (table-style table)))
+    (format nil "~A\\end{~A}"
+          (cond
+            ((equal style "booktabs") "\\bottomrule")
+            ((equal style "standard") "\\hline")
+            (""))
+          (latex-type table))))
 
-(defun quote-quotes(babel text)
+(defmethod visit-node((table latex-table) (node colspec))
+  (setf (slot-value table 'col-specs)
+        (nconc (slot-value table 'col-specs)
+               (list (attribute node :colwidth)))))
+
+(defun colspecs(table)
+  "Return colspecs for longtable"
+  (with-slots(col-specs col-width rowspan) table
+    (let* ((width 80)
+           (total-width
+            (/ (+ (reduce #'+ col-specs) (length col-specs)) width)))
+      (let ((factor 0.93))
+        (when (> total-width 1) (setf factor (/ factor total-width)))
+        (setf col-width (mapcar
+                         #'(lambda(w) (+ (/ (* factor (1+ w)) width) 0.005))
+                         col-specs)
+              rowspan (make-list (length col-specs) :initial-element 0))
+        (let ((bar (vertical-bar table)))
+          (format nil "~{~Ap{\\~,2f\\localllinewidth}~}~A"
+                  (mapcan #'(lambda(w) (list bar w)) col-width)
+                  bar))))))
+
+(defun column-width(table)
+  (with-slots(col-width cell-in-row) table
+    (format nil "~,2f\\locallinewidth"
+            (elt col-width (1- cell-in-row)))))
+
+(defun visit-thead(table)
+  (let ((style (table-style table)))
+    (cond
+      ((equal style "booktabs") (values "\\toprule" "\\midrule\\endhead"))
+      ((equal style "standard") (values "\\hline" "\\endhead"))
+      (""))))
+
+(defun visit-row(table)
+  (setf (slot-value table 'cell-in-row) 0))
+
+(defun depart-row(table)
+  (setf (slot-value table 'cell-in-row) nil)
   (with-output-to-string(os)
-    (let ((parts (split-sequence #\" text)))
-      (write-string (car parts) os)
-      (dolist(part (cdr parts))
-        (write-string (next-quote babel) os)
-        (write-string part os)))))
+    (format os " \\\\~%")
+    (with-slots(rowspan) table
+      (setf rowspan (mapcar #'(lambda(v) (if (> v 0) (1- v) v)) rowspan))
+      (when (equal (table-style table) "standard")
+        (let ((rowspans nil))
+          (do ((i 0 (1+ i)))
+              ((> i (length rowspan)))
+            (when (<= (nth i rowspan) 0) (push (1- i) rowspans)))
+          (if (= (length rowspan) (length rowspans))
+              (format os "\\hline~%")
+              (format os "~{\\cline{~D-~:*~D}~%~}"
+                      (nreverse rowspans))))))))
 
-(defun double-quotes-in-tt(babel text)
-  (if (slot-value babel 'double-quote-replacement)
-      (regex-replace-all "\"" text (slot-value babel 'double-quote-replacement))
-      text))
+(defun rowspan(table cell)
+  (nth cell (slot-value table 'rowspan)))
 
-(defun get-language(babel)
-  (let* ((p (position #\_ (language babel))))
-    (cdr (assoc (if p (subseq (language babel) 0 p) (language babel))
-         (slot-value babel 'iso639-to-babel) :test #'string=))))
+(defun (setf rowspan)(value table cell)
+  (when (nth cell (slot-value table 'rowspan))
+    (setf (nth cell (slot-value table 'rowspan)) value)))
+
+(defun visit-entry(table )
+  (incf (slot-value table 'cell-in-row)))
 
 (defun to-latex-encoding(encoding)
   "Translate docutils encoding name into latex's.
 Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
-  (let ((enc (cdr (assoc encoding
-                         '(("iso-8859-1" . "latin1")     ;; west european
-                           ("iso-8859-2" . "latin2")     ;; east european
-                           ("iso-8859-3" . "latin3")     ;; esperanto) maltese
-                           ("iso-8859-4" . "latin4")     ;; north european)scandinavian) baltic
-                           ("iso-8859-5" . "iso88595")   ;; cyrillic (ISO)
-                           ("iso-8859-9" . "latin5")     ;; turkish
-                           ("iso-8859-15" . "latin9")    ;; latin9) update to latin1.
-                           ("mac_cyrillic" . "maccyr")   ;; cyrillic (on Mac)
-                           ("windows-1251" . "cp1251")   ;; cyrillic (on Windows)
-                           ("koi8-r" . "koi8-r")         ;; cyrillic (Russian)
-                           ("koi8-u" . "koi8-u")         ;; cyrillic (Ukrainian)
-                           ("windows-1250" . "cp1250")   ;;
-                           ("windows-1252" . "cp1252")   ;;
-                           ("us-ascii" . "ascii")))
-                  :test #'string-equal)))
-    (or enc (string-downcase (regexp-replace-all "[-_]" encoding "")))))
-
-
+  (let ((enc
+         (cdr
+          (assoc
+           encoding
+           '(("iso-8859-1" . "latin1")     ;; west european
+             ("iso-8859-2" . "latin2")     ;; east european
+             ("iso-8859-3" . "latin3")     ;; esperanto) maltese
+             ("iso-8859-4" . "latin4")     ;; north european)scandinavian) baltic
+             ("iso-8859-5" . "iso88595")   ;; cyrillic (ISO)
+             ("iso-8859-9" . "latin5")     ;; turkish
+             ("iso-8859-15" . "latin9")    ;; latin9) update to latin1.
+             ("mac_cyrillic" . "maccyr")   ;; cyrillic (on Mac)
+             ("windows-1251" . "cp1251")   ;; cyrillic (on Windows)
+             ("koi8-r" . "koi8-r")         ;; cyrillic (Russian)
+             ("koi8-u" . "koi8-u")         ;; cyrillic (Ukrainian)
+             ("windows-1250" . "cp1250")   ;;
+             ("windows-1252" . "cp1252")   ;;
+             ("us-ascii" . "ascii"))
+           :test #'string-equal))))
+    (or enc
+        (string-downcase (regex-replace-all "[-_]" encoding "")))))
 
 (defclass latex-writer(writer)
-  ((documentclass :reader documentclass :initform "article" :initarg documentclass)
+  ((document-class :initform "article" :initarg :document-class
+                   :reader document-class)
    (optionlist-environment
     :initform
     "\\newcommand{\\optionlistlabel}[1]{\\bf #1 \\hfill}
@@ -268,56 +262,118 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
    (class-sections
     :reader class-sections
     :initform
-    '(("book" "chapter"  "section"  "subsection"  "subsubsection" "paragraph")
-      ("scrbook" "chapter"  "section"  "subsection"  "subsubsection" "paragraph")
-      ("report" "chapter"  "section"  "subsection"  "subsubsection" "paragraph")
-      ("scrreprt" "chapter"  "section"  "subsection"  "subsubsection" "paragraph")
-      ("article" "section"  "subsection"  "subsubsection" "paragraph")
-      ("scrartcl" "section"  "subsection"  "subsubsection"  "paragraph") ))
+    '(("book" "chapter" "section" "subsection" "subsubsection"
+       "paragraph" "subparagraph")
+      ("scrbook" "chapter" "section" "subsection" "subsubsection"
+       "paragraph" "subparagraph")
+      ("report" "chapter" "section" "subsection" "subsubsection"
+       "paragraph" "subparagraph")
+      ("scrreprt" "chapter" "section" "subsection" "subsubsection"
+       "paragraph" "subparagraph")
+      ("article" "section" "subsection" "subsubsection"
+       "paragraph" "subparagraph")
+      ("scrartcl" "section" "subsection" "subsubsection"
+       "paragraph" "subparagraph") ))
    (active-table :reader active-table)
-   (topic-class :initform "")
-   (babel :reader babel)
-   (mode :initform nil :documentation "List of Modes currently active e.g. :literal :mathmode :literal-block")
-   (section-numbers :documentation "List of nested section numbers")
+   (topic-class :initform nil)
+   (title :initform "" :accessor title)
+   (mode :initform nil
+         :documentation "List of Modes currently active e.g. :literal :mathmode :literal-block")
+   (literal-block-stack :initform nil :accessor literal-block-stack
+                        :documentation "Nested literal blocks")
+   (author-stack :initform nil :accessor author-stack
+                 :documentation "List of author information")
+   (date :accessor date :documentation "Set date")
+   (dependencies :initform nil :accessor dependencies
+                 :documentation "List of dependencie uris")
+   (section-numbers :initform nil :accessor section-numbers
+                    :documentation "Stack of nested section numbers")
+   (enumeration-counters :initform nil :accessor enumeration-counters
+                         :documentation "Stack of enumeration counters")
+   (metadata :initform (make-hash-table) :reader metadata
+             :documentation "docinfo metadata for Latex and pdfinfo")
    ;; parts of document filled in during translate
    head-prefix
+   pdfinfo
    head
    body-prefix
-   body-suffix)
-  (:default-initargs
-      :parts '(head-prefix  head body-prefix body body-suffix))
-  (:documentation "Docutils html writer"))
+   docinfo
+   body
+   body-suffix
+   bibitems
+   footer
+   tmp-parts)
+  (:default-initargs :parts
+      '(head-prefix pdfinfo  head body-prefix docinfo body footer body-suffix))
+  (:documentation "Docutils latex writer"))
+
+(defmacro collect-parts(&body body)
+  `(progn
+     (setf (slot-value docutils::*current-writer* 'tmp-parts) nil)
+     (with-part(tmp-parts) ,@body)
+     (slot-value docutils::*current-writer* 'tmp-parts)))
+
+(defmacro with-modes((writer &rest modes) &body body)
+  (let ((tmp (gensym))
+        (gwriter (gensym)))
+    `(let* ((,gwriter ,writer)
+            (,tmp (slot-value ,gwriter 'mode)))
+       (setf (slot-value ,gwriter 'mode)
+             (nconc (list ,@modes) (slot-value ,gwriter 'mode)))
+       ,@body
+       (setf (slot-value ,gwriter 'mode) ,tmp))))
 
 (defun mode(checklist writer)
+  "Return true if writer is in any of the checklist modes"
   (if (listp checklist)
-      (some #'(lambda(s) (member s (mode writer))) checklist)
-      (member checklist (mode writer))))
+      (union checklist (slot-value writer 'mode))
+      (member checklist (slot-value writer 'mode))))
 
-(defun section(writer &optional (level (length *section-level*)))
+;; these are dependant on *language*
+(defun quote-quotes(text)
+  (let ((quotes (latex-quotes *language*))
+        (quote-index 0))
+    (flet ((next-quote()
+             (prog1
+                 (aref quotes quote-index)
+               (setf quote-index (mod (1+ quote-index) 2)))))
+      (with-output-to-string(os)
+        (let ((parts (split-sequence #\" text)))
+          (write-string (car parts) os)
+          (dolist(part (cdr parts))
+            (write-string (next-quote) os)
+            (write-string part os)))))))
+
+(defun double-quotes-in-tt(text)
+  (let ((dqr (latex-double-quote-replacement *language*)))
+    (if dqr
+        (regex-replace-all "\"" text dqr)
+        text)))
+
+(defun section(writer &optional (level (1- (length (section-numbers writer)))))
   "Return the section name at the given level for the specific
             document class."
-  (let ((sections (cdr (assoc  (document-class writer) (class-sections writer)
-                               :test #'string-equal))))
+  (let ((sections (cdr (assoc (document-class writer) (class-sections writer)
+                              :test #'string-equal))))
     (if (< level (length sections))
         (elt sections level)
         (car (last sections)))))
 
 (defmethod visit-node ((writer latex-writer) (document document))
-    (with-slots(mode section-numbers active-table babel)
+    (with-slots(mode section-numbers active-table bibitems) writer
       (setf section-numbers (list 0)
             mode nil
+            bibitems nil
             active-table (make-instance
-                          'table
+                          'latex-table
                           :latex-type "longtable"
-                          :latex-style (setting :table-style document))
-            babel (make-instance 'babel
-                                 :lang (setting :language-code document))))
+                          :table-style (setting :table-style document)))
     (with-part(head-prefix)
       (part-prepend
        (format nil "\\documentclass[~A~@[,~A~]]{~A}~%"
                (setting :latex-document-options document)
-               (get-language (babel writer))
-               (setting :latex-documentclass document)))
+               (babel *language*)
+               (setting :latex-document-class document)))
       (part-append
        (format nil "~{\\usepackage{~A}~%~}"
                 '("babel" "shortvrb" "tabularx" "longtable" "amsmath"
@@ -359,19 +415,41 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
       (dolist(s '(optionlist-environment lineblock-environment
                   footnote-floats some-commands))
         (part-append (slot-value writer s) #\newline))
-      (when-bind (stylesheet (setting :stylesheet document))
+      (when-bind (stylesheet (setting :latex-stylesheet document))
                  (part-append (format nil "\\input{~A}~%" stylesheet))))
     (unless (setting :use-latex-docinfo document)
       (with-part(head)
         (part-append "\\author{}\\title{}" #\newline)))
     (with-part(body-suffix) (part-append #\newline))
+    (with-part(body-prefix)
+      (part-append "\\begin{document}" #\newline)
+      (when (setting :use-latex-docinfo (document writer))
+        (part-append "\\maketitle" #\newline)))
+    (with-part(body)
+      (part-append "\\setength{\\locallinewidth}{\\linewidth}" #\newline)
+      (call-next-method)
+
+      (when (and bibitems (setting :use-latex-citations (document writer)))
+        (let ((widest-label ""))
+          (dolist(item bibitems)
+            (when (> (length (first item)) (length widest-label))
+              (setf widest-label (first item))))
+          (part-append
+           (format nil "\\begin{thebibliography}{~A}~%" widest-label)))
+          (dolist(item bibitems)
+            (part-append (format nil "\\bibitem[~A]{~A}{~A}~%"
+                                 (first item)
+                                 (first item)
+                                 (second item))))
+          (part-append "\\end{bibliography" #\Newline)))
+    (with-part(body-suffix) (part-append "\\end{document}") #\newline)))
 
 (defun encode(writer string)
   "Encode special characters in `text` & return encoded string.
        # $ % & ~ _ ^ \ { }
    Escaping with a backslash does not help with backslashes, ~ and ^.
        < > are only available in math-mode or tt font. (really ?)
-   $ starts math- mode.
+   $ starts math- mode.\\begin{thebibliography}{%s}
  AND quotes:"
   (when (mode :verbatim writer) (return-from encode string))
   (flet((replace-all(regexp replacement)
@@ -379,902 +457,817 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
   ;; first the braces
   (replace-all "([\\{\\}])" "{\\\1}")
   ;; then backslash except in form '{\{}' or '{\}}
-  (replace-all "(?<!{)(\\)(?![{}]})" "{\\textbackslash}")
-  ;; then dollar
-  (replace-all "$" "{\\$}")
-  ;; then math type characters
-  (unless (union (slot-value writer 'mode)
-                 '(:literal-block :literal :mathmode))
-    (replace-all "|" "{\\textbar}")
-    (replace-all "<" "{\\textless}")
-    (replace-all ">" "{\\textgreater}"))
-  (replace-all "&" "{\\&}")
-  (replace-all "^" "{\\textasciicircum}")
-  (replace-all "%" "{\\%}")
-  (replace-all "#" "{\\#}")
-  (replace-all "~" "{\\textasciitilde}")
+  (replace-all "(?<!{)(\\\\)(?![{}]})" "{\\textbackslash}")
+  ;; do character replacements
+  (setf string
+        (with-output-to-string(os)
+          (loop
+             :for c :across string
+             :do
+             (flet ((char-replace(map prefix suffix)
+                      (let ((repl (cdr (assoc c map))))
+                        (when repl
+                          (write-string prefix os)
+                          (write-string repl os)
+                          (write-string suffix os)))))
+               (or
+                (unless (mode '(:literal-block :literal :mathmode) writer)
+                  (char-replace
+                   '((#\| . "textbar")
+                     (#\< . "textless")
+                     (#\> . "textgreater"))
+                   "{\\" "}"))
+                (char-replace
+                 '((#\$ ."$")
+                   (#\& . "&")
+                   (#\† . "dag")        ;; dagger
+                   (#\‡ . "ddag")
+                   ('\§ .q "S")          ;; section
+                   (#\  . "P")           ;; paragraph
+                   (#\¶ ."P")
+                   (#\^ ."textasciicircum")
+                   (#\% . "%")
+                   (#\# ."#")
+                   (#\® . "texttrademark")
+                   (#\© . "copyright")
+                   (#\♠ . "spadesuit") ;; spades
+                   (#\♥ ."heartsuit")  ;; hearts
+                   (#\♦ . "diamondsuit");; diamonds
+                   (#\♣ . "clubsuit")
+                   (#\~ ."textasciitilde"))
+                 "{\\" "}")
+                (char-replace
+                 '((#\⇔ . "Leftrightarrow"))
+                 "{\\ensuremathmode{\\" "}}")
+                (write-char c os))))))
   ;; Separate compound characters, e.g. "--" to "-{}-".(The
   ;; actual separation is done later; see below.)
   (let ((separate-chars "-"))
-    (if (union (slot-value writer 'mode) '(:literal-block :literal))
+    (if (mode '(:literal-block :literal) writer)
         (progn
           (setf separate-chars (concatenate 'string separate-chars ",`\'\"<>"))
-          (setf string (double-quotes-in-tt (babel writer) string))
-          (if (equal (setting :font-encoding document) "OT1")
+          (setf string (double-quotes-in-tt string))
+          (if (equal (setting :font-encoding (document writer)) "OT1")
               (progn
                 (replace-all "_" "{\\underline{ }}")
                 (replace-all "\\textbackslash" "\\reflectbox{/}"))
               (replace-all "_" "{\\_}")))
         (progn
-          (setf string (quote-quotes (babel writer) string))
+          (setf string (quote-quotes string))
           (replace-all "_" "{\\_}")))
     (dotimes(x 2)
-      (loop :for c :across separate-chars
-            (replace-all (make-string 2 :initial-element c)
-                         (format nil "~C{}~C" c))))
+      (loop
+         :for c :across separate-chars
+         :do (replace-all (make-string 2 :initial-element c)
+                          (format nil "~C{}~C" c c)))))
     (cond
       ((mode '(:insert-newline :literal-block) writer)
        (replace-all "
-" "\\\\\n"))
+" "\\\\\\\\
+"))
       ((mode  :mbox-newline writer)
-       (multiple-value-bind(openings closings)
-           (if (mode :literal-block writer)
-               (values reduce #'
+       (let ((openings (jarw.string:join-strings (literal-block-stack writer)))
+             (closings (make-string (length (literal-block-stack writer))
+                                    :initial-element #\})))
+         (replace-all "
+"
+                      (format nil  "~s}\\\\
+\\mbox{~s"
+                              closings
+                              openings)))))
+    (when (mode :insert-non-breaking-blanks writer)
+      (replace-all " " "~"))
+    string))
 
-(defun attval(string)
+(defun attval(writer string)
   (encode
+   writer
    (with-output-to-string(os)
     (loop
      for c across string
      do (if (wsp-char-p c) (write-char #\space os)  (write-char c os))))))
 
-(defun start-tag(node tagname &optional attributes &key (infix "") )
-  (let ((tagname (string-downcase tagname))
-        (atts (copy-list attributes)))
-    (when node
-      (when-bind(class (attribute node :class))
-        (setf (getf atts :class)
-              (if (getf atts :class)
-                  (concatenate 'string (getf atts :class) " " class)
-                  class)))
-      (when-bind(id (attribute node :id))
-        (setf (getf atts :id) id)))
-    (when-bind(id (getf atts :id))
-      (when (is-named-tag tagname) (setf (getf atts :name) id)))
-    (loop for a on atts by #'cddr
-       do (setf (first a) (string-downcase (first a)))
-       when (listp (second a)) do (setf (second a) (join-strings (second a))))
-    (format nil "<~A~{ ~A=\"~A\"~}~A>" tagname atts infix)))
-
-(defun empty-tag(node tagname &optional attributes)
-  (start-tag node tagname attributes :infix " /"))
-
-(defun set-first-last(node)
-  (when (> (number-children node) 0)
-    (let ((first (child node 0))
-          (last (child node (1- (number-children node)))))
-      (when (typep first 'element) (add-class first "first"))
-      (when (typep last 'element) (add-class last "last")))))
-
 (defmethod visit-node((writer latex-writer) (text text))
-  (part-append (encode (as-text text))))
+  (part-append (encode writer (as-text text))))
 
-(defmethod visit-node((writer latex-writer) (text extended-text))
-  (part-append (as-text text)))
-
-(defmacro def-simple-node(nodetype tagname &optional attributes
-                          &key (suffix #\space) )
-  (let ((writer (gensym))
-        (tagname (string-downcase tagname))
-        (node (gensym)))
-    `(defmethod visit-node((,writer latex-writer) (,node ,nodetype))
-      (part-append (start-tag ,node ,tagname ,attributes) ,suffix)
-      (call-next-method)
-      (part-append,(format nil "</~A>" tagname) ,suffix))))
-
-;;; now node types (in order)
-
-(def-simple-node abbreviation "abbr")
-(def-simple-node acronym "acronym")
-
-(defmacro add-docinfo-item((writer node name &key (meta t)) &body body)
-  (declare (ignore writer))
-  `(progn
-     ,@(when meta
-             `((with-part(head)
-                 (part-append
-                  (format nil "<meta name=~S content=~S />~%"
-                          ,name (as-text ,node))))))
-    (set-first-last ,node)
-    (part-append
-     (start-tag ,node "tr")
-     ,(format nil "<th class=\"docinfo-name\">~A</th><td>" name))
-    ,@body
-    (part-append "</td></tr>")))
+(defmacro visit-docinfo-item(writer node name)
+  "Helper macro for docinfo items"
+  `(if (setting :use-latex-docinfo (document ,writer))
+       ,(case name
+          ((author organization contact address)
+           ;; We attach these to the last author.  If any of them
+           `(let ((text
+                   ,(if (eql name 'address)
+                        `(with-modes(,writer :insert-newline)
+                           (encode ,writer (as-text ,node)))
+                        `(attval ,writer (as-text ,node)))))
+              ,(if (eql name 'author)
+                   `(push (list text) (author-stack ,writer))
+                   `(setf (first (author-stack ,writer))
+                          (nconc (first (author-stack ,writer)) (list text))))))
+          (date
+           `(setf (date ,writer) (attval ,writer (as-text ,node)))))
+       (with-part(docinfo)
+         (part-append
+          (format nil "\\textbf{~S}: & "
+                  (translated-text ,(string-downcase name) *language*)))
+         ,(case name
+           (address
+            `(with-modes(,writer :insert-newline)
+               (part-append "{\\raggedright" #\newline)
+               (call-next-method)
+               (part-append "}")))
+           (t '(call-next-method)))
+         (part-append " \\\\" #\newline))))
 
 (defmethod visit-node((writer latex-writer) (node address))
-  (add-docinfo-item(writer node "address" :meta nil)
-    (part-append (start-tag node "pre"  '(:class "address"))
-                  #\newline)
-    (call-next-method)
-    (part-append "</pre>" #\newline)))
+  (visit-docinfo-item writer node address))
 
 (defmethod visit-node((writer latex-writer) (node admonition))
-  (let ((name (string-downcase (class-name (class-of node)))))
-    (part-append (start-tag node "div" `(:class ,name))
-                  #\newline)
-    (add-child node (make-node 'title (make-node 'text (translated-text name))) 0)
-    (set-first-last node)
-    (call-next-method)
-    (part-append "</div>" #\newline)))
+  (with-part(body)
+    (part-append (format nil
+                         "\\begin{center}
+\\begin{sffamily}
+\\fbox{\\parbox{\\admonitionwidth}{\\textbf{\\large ~A}
+\\vspace{2mm}
+}}
+\\end{sffamily}
+\\end{center}
+"
+                         (translated-text (string-downcase (type-of node))
+                                          *language*)))))
 
-(defmethod visit-node((writer latex-writer) (node attribution))
-  (multiple-value-bind(prefix suffix)
-      (ecase (setting :attribution (document node))
-        (:dash (values "&mdash; " ""))
-        (:parentheses (values #\( #\)))
-        ('nil (values "" "")))
-    (part-append
-     (start-tag node "p" `(:class "attribution")) prefix)
-    (call-next-method)
-    (part-append suffix "</p>" #\newline)))
-
+;; skip authors as author called for each one
 (defmethod visit-node((writer latex-writer) (node author))
-  (add-docinfo-item(writer node "author")
-    (call-next-method)))
+  (let ((authors (gethash 'author (metadata writer))))
+      (setf (gethash 'author (metadata writer))
+            (if authors
+                (concatenate 'string authors
+                             (elt (author-separators *language*) 0)
+                             (attval writer (as-text node)))
+                (attval writer (as-text node)))))
+  (visit-docinfo-item writer node author))
 
-(def-simple-node block-quote "blockquote")
-
-(defun simple-list-p(node)
-  (when (or (typep node 'bullet-list) (typep node 'enumerated-list))
-    (with-children(list-item node)
-      (let ((found nil))
-	(with-children(entry list-item)
-	  (unless (typep entry 'invisible)
-	    (when (and found (not (typep found 'paragraph)))
-	      (return-from simple-list-p nil))
-	    (if (typep entry 'paragraph)
-		(if found
-		    (return-from simple-list-p nil)
-		    (setf found entry))
-		(if (simple-list-p entry)
-		    (setf found entry)
-		    (return-from simple-list-p nil)))))))))
-
-(defun parents(node)
-  (unless (typep node 'document)
-    (cons (parent node) (parents (parent node)))))
-
-(defun topic-class(node)
-  (typecase node
-    (topic (attribute node :class))
-    (document nil)
-    (t (topic-class (parent node)))))
-
-(defparameter *compact-simple* nil)
-(defparameter *compact-p* t)
-(defvar *topic-class* "")
+(defmethod visit-node((writer latex-writer) (node block-quote))
+  (part-append "\\begin{quote}" #\newline)
+  (call-next-method)
+  (part-append "\\end{quote}" #\newline))
 
 (defmethod visit-node((writer latex-writer) (node bullet-list))
-  (let* ((old-compact-simple *compact-simple*)
-	 (*compact-p* nil)
-	 (*compact-simple*
-	  (and (setting :compact-lists (document node))
-	       (or *compact-simple*
-		   (equal *topic-class* "contents")
-		   (simple-list-p node)))))
-    (part-append
-     (start-tag node "ul"
-                (when (and *compact-simple*
-                           (not old-compact-simple))
-                  '(:class "simple")))
-     #\newline)
-    (call-next-method)
-    (part-append "</ul>" #\newline)))
+  (if (equal (slot-value writer 'topic-class) "contents")
+      (unless (setting :use-latex-toc (document writer))
+        (part-append "\\begin{list}{}{}" #\newline)
+        (call-next-method)
+        (part-append "\\end{list}" #\newline))
+      (progn
+        (part-append "\\begin{itemize}" #\newline)
+        (call-next-method)
+        (part-append "\\end{itemize}" #\newline))))
 
-(def-simple-node caption "p" '(:class "caption") :suffix #\newline)
+(defmethod visit-node((writer latex-writer) (node superscript))
+  (part-append "$^{")
+  (with-modes(writer :mathmode) (call-next-method))
+  (part-append "}"))
+
+(defmethod visit-node((writer latex-writer) (node subscript))
+  (part-append "$_{")
+  (with-modes(writer :mathmode) (call-next-method))
+  (part-append "}"))
+
+(defmethod visit-node((writer latex-writer) (node caption))
+  (part-append "\\caption{")
+  (call-next-method)
+  (part-append "}"))
+
+(defmethod visit-node((writer latex-writer) (node title-reference))
+  (part-append "\\titlereference{")
+  (call-next-method)
+  (part-append "}"))
 
 (defmethod visit-node((writer latex-writer) (node citation))
-  (assert (typep (child node 0) 'label))
-  (part-append
-    (start-tag node "table"
-	        '(:class "docutils citation" :frame "void" :rules "none"))
-    "<colgroup><col class=\"label\" /><col /></colgroup>
-<tbody valign=\"top\">
-<tr>")
-  (call-next-method)
-  (part-append
-   "</td></tr>
-</tbody>
-</table>
-"))
+  (if (setting :use-latex-citations (document writer))
+      (push (nreverse (collect-parts (call-next-method)))
+            (slot-value writer 'bibitems))
+      (progn
+        (part-append
+         (format nil "\\begin{figure}[b]
+\\hypertarget{~A}" (attribute node :id)))
+        (call-next-method)
+        (part-append "\\end{figure}" #\newline #\newline))))
 
 (defmethod visit-node((writer latex-writer) (node citation-reference))
-  (let ((href
-         (cond ((attribute node :refid)
-                (format nil "#~A" (attribute node :refid)))
-               ((attribute node :refname)
-                (format nil "#~A"
-                        (gethash (attribute node :refname)
-                                 (nameids (document node))))))))
-    (part-append
-     (start-tag node "a"  `(:class "citation-reference"
-				   ,@(when-bind(id (attribute node :id))
-				      `(:id ,(format nil "~A" id)))
-				   ,@(when href `(:href ,href))))
-     #\[)
-    (call-next-method)
-    (part-append "]</a>")))
+  (if (setting :use-latex-citations (document writer))
+      (progn
+        (part-append "\\cite{")
+        (call-next-method)
+        (part-append "}"))
+      (let ((href
+             (or (attribute node :refid)
+                 (gethash (attribute node :refname)
+                          (nameids (document writer))))))
+        (part-append (format nil "[\\hyperlink{~A}{" href))
+        (call-next-method)
+        (part-append "}]"))))
 
 (defmethod visit-node((writer latex-writer) (node classifier))
-  (part-append
-                " <span class=\"classifier-delimiter\">:</span> "
-                (start-tag node "span"  `(:class "classifier")))
+  (part-append "(\\textbf{")
   (call-next-method)
-  (part-append "</span>"))
+  (part-append "})" #\newline))
 
 (defmethod visit-node((writer latex-writer) (node colspec))
-  (error "Colspec not inside a tgroup"))
+  (visit-node (active-table writer) node))
 
 (defmethod visit-node((writer latex-writer) (node comment))
-  (part-append
-   (format nil "<!-- ~A -->~%"
-	   (cl-ppcre:regex-replace-all "-(?=-)" (as-text node) "- "))))
-
-(defmethod visit-node((writer latex-writer) (node compound))
-  (let ((n (number-children node)))
-    (when (> n 1)
-      (add-class (child node 0) "compound-first")
-      (add-class (child node (1- n)) "compound-last")
-      (dotimes(i (- n 2))
-	(add-class (child node (1+ i)) "compount-middle"))))
-  (part-append (start-tag node "div"  '(:class "compound")))
-  (call-next-method)
-  (part-append "</div>" #\newline))
+  (part-append "%% "
+   (ppcre:regex-replace-all "
+" (as-text node) "
+%")))
 
 (defmethod visit-node((writer latex-writer) (node contact))
-  (add-docinfo-item(writer node "contact" :meta nil)
-		   (call-next-method)))
+  (visit-docinfo-item writer node contact))
 
 (defmethod visit-node((writer latex-writer) (node copyright))
-  (add-docinfo-item(writer node "copyright")
-		   (call-next-method)))
+  (visit-docinfo-item writer node copyright))
 
 (defmethod visit-node((writer latex-writer) (node date))
-  (add-docinfo-item(writer node "date")
-		   (call-next-method)))
+  (visit-docinfo-item writer node date))
 
 (defmethod visit-node((writer latex-writer) (node definition))
-  (part-append "</dt>" #\newline (start-tag node "dd"))
-  (set-first-last node)
+  (part-append "%[Start Definition]" #\newline)
   (call-next-method)
-  (part-append "</dd>" #\newline))
+  (part-append "%[End Definition]" #\newline))
 
 (defmethod visit-node((writer latex-writer) (node definition-list))
-  (part-append (start-tag node "dl" '(:class "docutils")))
+  (part-append "\\begin{description}" #\newline)
   (call-next-method)
-  (part-append "</dl>" #\newline))
+  (part-append "\\end{description}" #\newline))
+
+(defmethod visit-node((writer latex-writer) (node definition-list-item))
+  (part-append "%[Start Definition List Item]" #\newline)
+  (call-next-method)
+  (part-append "%[End Definition List Item]" #\newline))
 
 (defmethod visit-node((writer latex-writer) (node description))
-  (part-append (start-tag node "td"))
-  (set-first-last node)
-  (call-next-method)
-  (part-append "</td>"))
+  (part-append #\space)
+  (call-next-method))
 
 (defmethod visit-node((writer latex-writer) (node docinfo))
   (with-part(docinfo)
-    (part-append
-     (start-tag node "table"
-                '(:class "docinfo" :frame "void" :rules "none"))
-     "<col class=\"docinfo-name\" />
-<col class=\"docinfo-content\" />
-<tbody valign=\"top\">" #\newline)
+    (part-append "
+\\begin{center}
+\\begin{tabularx}{\\docinfowidth}{lX}
+")
     (call-next-method)
-    (part-append "</tbody>
-</table>" #\newline)))
+    (part-append "
+\\end{tabularx}
+\\end{center}
+")))
 
 (defmethod visit-node((writer latex-writer) (node doctest-block))
-  (part-append (start-tag node "pre"  '(:class "doctest-block")))
-  (call-next-method)
-  (part-append "</pre>" #\newline))
-
+  (part-append "\\begin{verbatim}" #\newline)
+  (with-modes(writer :verbatim)
+      (call-next-method))
+  (part-append "\\end{verbatim}" #\newline))
 
 
 (defmethod visit-node((writer latex-writer) (node emphasis))
-  (part-append "<em>")
-  (call-next-method)
-  (part-append "</em>"))
+  (let ((txt "\\emph{"))
+    (part-append txt)
+    (push txt (literal-block-stack writer))
+    (call-next-method)
+    (pop (literal-block-stack writer))
+    (part-append "}")))
 
 (defmethod visit-node((writer latex-writer) (node entry))
-  (let ((tagname (if (typep (parent (parent node)) 'thead) "th" "td"))
-	(morerows (attribute node :morerows))
-	(morecols (attribute node :morecols))
-	(atts nil))
-    (when morerows (setf (getf atts :rowspan) (1+ morerows)))
-    (when morecols (setf (getf atts :colspan) (1+ morecols)))
-    (part-append (start-tag node tagname atts))
-    (when (= 0 (number-children node))
-      (part-append "&nbsp;"))
-    (set-first-last node)
+  (let ((table (active-table writer))
+        (suffix nil))
+    (visit-entry table)
+    (if (= 1 (entry-number table))
+        ;; if the firstrow is a multirow, this actually is the second row.
+        ;; this gets hairy if rowspans follow each other.
+        (when (rowspan table 0)
+          (part-append " & ")
+          (visit-entry table))
+        (part-append " & "))
+    (let ((morerows (attribute node :morerows))
+          (morecols (attribute node :morecols)))
+      (when (and morerows morecols)
+        (error
+         "Cells that span multiple rows and columns are
+not supported in Latex"))
+      (cond
+        (morerows
+         (let ((count (1+ morerows)))
+           (setf (rowspan table (1- (entry-number table))) count)
+           (part-append
+            (format nil "\\multirow{~D}{~S}{" count (column-width table)))
+           (push "}" suffix))) ; BUG following rows must have empty cells.
+        (morecols
+         (let ((bar1 (if (= 1 (entry-number table)) (vertical-bar table) ""))
+               (count (1+ morecols)))
+           ;; the vertical bar before column is missing if it is the first
+           ;; column. the one after always.
+           (part-append
+            (format nil "\\multicolumn{~D}{~Al~A}{"
+                    count bar1 (vertical-bar table)))
+           (push "}" suffix)))))
+    (when (typep (parent (parent node)) 'thead)
+      (part-append "\\textbf{")
+      (push "}" suffix))
     (call-next-method)
-    (part-append (format nil "</~A>~%" tagname))))
+    (dolist(item (nreverse suffix)) (part-append item))
+    ;;  if following row is spanned from above.
+    (when (rowspan table (entry-number table))
+      (part-append " & ")
+      (visit-entry table))))
+
+(defmethod visit-node((writer latex-writer) (node row))
+  (visit-row (active-table writer))
+  (call-next-method)
+  (part-append (depart-row (active-table writer))))
 
 (defmethod visit-node((writer latex-writer) (node enumerated-list))
-  (let ((atts nil)
-	(old-compact-simple *compact-simple*)
-	(*compact-p* nil)
-	(*compact-simple*
-	 (and (setting :compact-lists (document node))
-	      (or *compact-simple*
-		  (equal *topic-class* "contents")
-		  (simple-list-p node)))))
-    (when-bind(start (attribute node :start)) (setf (getf atts :start) start))
-    (when-bind(type (attribute node :type))
-      (setf (getf atts :class) (string-downcase type)))
-    (when (and *compact-simple* (not old-compact-simple))
-      (setf (getf atts :class)
-	    (concatenate 'string (getf atts :class "") " simple")))
-    (part-append  (start-tag node "ol" atts))
-    (call-next-method)
-    (part-append  "</ol>" #\newline)))
+  (let ((enum-suffix (or (attribute node :suffix) ""))
+        (enum-prefix (or (attribute node :prefix) ""))
+        (enum-type (or (get (or (attribute node :type) :arabic)
+                            '(:arabic "arabic"
+                              :loweralpha "alph"
+                              :upperalpha "Alph"
+                              :lowerroman "roman"
+                              :upperroman "Roman")))))
+    (when (setting :compound-enumerators (document writer))
+      (when (and (setting :section-prefix-for-numerators (document writer))
+                 (section-numbers writer))
+        (setf enum-prefix
+              (concatenate 'string enum-prefix
+                           (format nil "~{~D.~}" (reverse (section-numbers writer))))))
+
+      (setf enum-prefix
+              (concatenate 'string enum-prefix
+                           (format nil "~{~A.~}" (reverse (enumeration-counters writer))))))
+    (let ((counter-name
+           (format nil "listcnt~D"
+                   (1+ (length (enumeration-counters writer))))))
+      (push (format nil "\\~A{~A}" enum-type counter-name)
+            (enumeration-counters writer))
+      (part-append
+       (format nil "\\newcounter{~A}~%\\begin{list}{~A\\~A{~A}~A}~%"
+               counter-name enum-prefix enum-type counter-name enum-suffix)
+       (format nil "{~%\\usecounter{~A}~%" counter-name))
+      (let ((start (attribute node :start)))
+        (when start
+          (part-append "\\addtocounter{~A}{~D}~%"
+                       counter-name (1- start))))
+      (part-append "\\setlength{\\rightmargin}{\\leftmargin}~%}~%")))
+  (call-next-method)
+  (part-append "\\end{list}" #\newline)
+  (pop (enumeration-counters writer)))
 
 (defmethod visit-node((writer latex-writer) (node field))
-  (part-append  (start-tag node "tr" '(:class "field")))
   (call-next-method)
-  (part-append  "</tr>" #\newline))
+  (part-append #\newline))
 
 (defmethod visit-node((writer latex-writer) (node field-body))
-  (part-append  (start-tag node "td" '(:class "field-body")))
-  (set-first-last node)
+  (when (slot-value writer 'docinfo)
+    (with-part(docinfo)
+      (part-append
+       (format nil "~A \\\\~%" (as-text node)))))
   (call-next-method)
-  (part-append  "</td>" #\newline))
+  (part-append #\newline))
 
 (defmethod visit-node((writer latex-writer) (node field-list))
-  (part-append
-   (start-tag node "table"
-	      '(:class "field-list"
-		:frame "void"
-		:rules "none"))
-   "<col class=\"field-name\" />
-<col class=\"field-body\" />
-<tbody valign=\"top\">
-")
-  (call-next-method)
-  (part-append  "</tbody>
-</table>
-"))
+  (if (eql docutils::*current-writer-part* 'docinfo)
+      (call-next-method)
+      (progn
+        (part-append "\\begin{quote}\\begin{description}" #\newline)
+        (call-next-method)
+        (part-append "\\end{quote}\\end{description}" #\newline))))
 
 (defmethod visit-node((writer latex-writer) (node field-name))
-    (let ((docinfo-p (typep (parent (parent node)) 'docinfo))
-	  (long  (> (length (as-text node)) 14)))
-      (part-append
-       (start-tag
-	node "th" (list :colspan (if long 2 1)
-			:class (if docinfo-p "docinfo-name" "field-name"))))
-      (call-next-method)
-      (part-append ":</th>")
-      (when long
-        (part-append "</tr>" #\newline "<tr><td>&nbsp;</td>"))))
+  (if (eql docutils::*current-writer-part* 'docinfo)
+      (part-append "\\textbf{~A}: & " (encode writer (as-text node)) #\newline)
+      (progn
+        (part-append "\\item[")
+        (call-next-method)
+        (part-append ":]"))))
 
 (defmethod visit-node((writer latex-writer) (node figure))
-  (let ((atts (list :class "figure")))
-    (when-bind(width (attribute node :width))
-              (setf (getf atts :style)
-                    (format nil "width: ~d~[ps~;~A~]" (car width) (cdr width))))
-    (part-append (start-tag node "div" atts))
-    (call-next-method)
-    (part-append "</div>" #\newline)))
+  (part-append "\\begin{figure}[htbp]
+\\begin{center}")
+  (call-next-method)
+  (part-append "
+\\end{center}
+\\end{figure}
+
+"))
 
 (defmethod visit-node((writer latex-writer) (node footer))
   (with-part(footer)
-    (part-append
-     "<hr class =\"docutils footer\" />"
-     (start-tag node "div" '(:class "footer")))
+    (part-append #\newline "\\begin{center}\\small" #\newline)
     (call-next-method)
-    (part-append "</div>" #\newline)))
+    (part-append #\newline "\\end{center}" #\newline #\newline)))
 
 (defmethod visit-node((writer latex-writer) (node footnote))
-  (assert (typep (child node 0) 'label))
-  (part-append
-   (start-tag node "div" '(:class "docutils footnote"
-                           :frame "void" :rules "none"))
-   "<colgroup><col class=\"label\" /><col /></colgroup>
-<tbody valign=\"top\">
-<tr>")
-  (call-next-method)
-  (part-append
-   "</td></tr>
-</tbody>
-</table>
-"))
+  (if (setting :use-latex-footnotes (document writer))
+      (progn
+        (part-append
+         "\\footnotetext[" (first (split-sequence #\space (as-text node)))
+         "]{")
+        (call-next-method)
+        (part-append "}" #\newline))
+      (progn
+        (part-append
+         (format nil "\\begin{figure}[b]\\hypertarget{~s}"
+                 (attribute node :id)))
+        (call-next-method)
+        (part-append "\\end{figure}" #\newline))))
 
 (defmethod visit-node((writer latex-writer) (node footnote-reference))
-  (let ((href
-	 (let ((refid (or (attribute node :refid)
-			  (gethash (attribute node :refname)
-				   (nameids (document node))))))
-	   (when refid  (list :href (format nil "#~A" refid))))))
-    (multiple-value-bind(prefix suffix)
-	(ecase (setting :footnote-references (document node))
-	  (:brackets (values "[" "]"))
-	  (:superscript (values "<sup>" "</sup>")))
-      (part-append
-	       (start-tag
-		node "a" `(:class "footnote-reference"
-				  ,@(when-bind(id (attribute node :id))
-				      `(:id ,(format nil "~A" id)))
-				  ,@href))
-         prefix)
-      (call-next-method)
-      (part-append suffix "</a>"))))
-
-(defmethod visit-node((writer latex-writer) (node header))
-  (with-slots(header body body-prefix) writer
-    (with-part(body-prefix)
-      (call-next-method)
-      (part-append writer 'header
-                    (start-tag node "div" '(:class "header"))
-                    (nreverse body)
-                    "<hr class=\"docutils header\"/>
-</div>
-")
-      (setf body-prefix (nconc header body-prefix)))))
-
-(defmethod visit-node((writer latex-writer) (node image))
-  (let ((atts nil))
-    (with-attributes(k v node) (setf (getf atts k) v))
-    (remf atts :class)
-    (setf (getf atts :src) (as-text (child node 0)))
-    (remf atts :uri)
-    (let ((scale (getf atts :scale))
-	  (width (car (getf atts :width)))
-	  (height (car (getf atts :height))))
-	(when scale
-	  (setf width (if width (round (/ (* width scale) 100)) scale))
-	  (setf height (if height (round (/ (* height scale) 100)) scale))
-	  (remf atts :scale))
-	(flet ((set-size(n symb)
-		 (when n
-		   (setf (getf atts symb)
-			 (format nil "~,f~:[%~;~:*~A~]" n
-				 (cdr (getf atts symb)))))))
-	  (set-size width :width)
-	  (set-size height :height))
-    (unless (getf atts :alt) (setf  (getf atts :alt)  (getf atts :src)))
-    (let ((inline-p (typep (parent node) 'text-element)))
-      (unless inline-p
-	(part-append
-	 (start-tag nil "div" (image-div-atts node))))
-      (part-append (empty-tag node "img" atts))
-      (unless inline-p (part-append "</div>" #\newline))))))
-
-(defun image-div-atts(node)
-  (let ((atts (list :class "image")))
-    (when-bind(class (attribute node :class))
-      (setf (getf atts :class)
-	    (concatenate 'string (getf atts :class) " " class)))
-    (when-bind(align (attribute node :align))
-      (setf (getf atts :align) (attval align))
-      (setf (getf atts :class)
-	    (concatenate 'string
-			 (getf atts :class) " align-" (getf atts :align))))
-    atts))
-
-(defmethod visit-node((writer latex-writer) (node docutils.nodes:inline))
-  (when (> (number-children node) 0)
-    (part-append (start-tag node "span" nil))
-    (call-next-method)
-    (part-append "</span>")))
+  (if (setting :use-latex-footnotes (document writer))
+      (part-append "\\footnotemark[" (encode writer (as-text node)) "]")
+      (let ((href (or (attribute node :refid)
+                      (gethash (attribute node :refname)
+                               (nameids (document writer))))))
+        (multiple-value-bind(prefix suffix)
+            (ecase (setting :footnote-references (document writer))
+              (:brackets (values "[" "]"))
+              (:superscript (values "\\raisebox{.5em}[0em]{\\scriptsize" "}")))
+          (part-append prefix (format nil "\\hyperlink{~A}{" href))
+          (call-next-method)
+          (part-append suffix)))))
 
 (defmethod visit-node((writer latex-writer) (node label))
-  (assert (typep (parent node) '(or footnote citation)))
-  (part-append (start-tag node "td" '(:class "label")))
-  (let ((backrefs (backrefs (parent node)))
-	(id (attribute (parent node) :id)))
-    (cond ((not (and backrefs (setting :footnote-backlinks (document node))))
-	   (part-append (format nil "<a name=\"~A\">[" id))
-	   (call-next-method)
-	   (part-append "]</a></td><td>"))
-	  ((= 1 (length backrefs))
-	   (part-append (format nil "<a class=\"fn-backref\" name=\"~A\" href=\"#~A\">[" id (first backrefs)))
-	   (call-next-method)
-	   (part-append "]</a></td><td>"))
-	  ((part-append (format nil "<a name=\"~A\">[" id))
-	   (call-next-method)
-	   (part-append "]</a></td><td><em>(")
-	   (let ((i 0))
-	     (dolist(id backrefs)
-	       (part-append
-		(format nil "<a class=\"fn-backref\" href=\"#~a\">~d</a>"
-			id (incf i)))))
-	   (part-append ")</em>")))))
+  (etypecase (parent node)
+    (footnote
+      (unless (setting :use-latex-footnotes (document writer))
+        (multiple-value-bind(prefix suffix)
+            (ecase (setting :footnote-references (document writer))
+              (:brackets (values "[" "]"))
+              (:superscript (values "$^{" "}$")))
+          (part-append prefix)
+          (call-next-method)
+          (part-append suffix))))
+    (citation
+     (unless (setting :use-latex-citations (document writer))
+       (part-append "[")
+       (call-next-method)
+       (part-append "]")))))
+
+(defmethod visit-node((writer latex-writer) (node header))
+  (with-part(prefix)
+    (part-append #\newline "\\verb|begin_header|" #\newline)
+    (call-next-method)
+    (part-append #\newline "\\verb|end_header|" #\newline)))
+
+(defmethod visit-node((writer latex-writer) (node image))
+  (push (attribute node :uri) (dependencies writer))
+  (let ((pre nil)
+        (post
+         (list (format nil "\\includegraphics{~A}" (attribute node :uri)))))
+    (when-bind(scale (attribute node :scale))
+      (push (format nil "\\scalebox{~f}{" (/ scale 100.0)) pre)
+      (push "}" post))
+    (when-bind(align (attribute node :align))
+      (multiple-value-bind(a b)
+          (case align
+            (:middle (values "\\raisebox{-0.5\\height}{" "}"))
+            (:bottom (values "\\raisebox{-\\height}{" "}"))
+            (:center (values "{\\hfill" "\\hfill}"))
+            (:left (values "{" "\\hfill}"))
+            (:right (values"{\\hfill" "}"))
+            (t (values "" "")))
+        (push a pre)
+        (push b post)))
+    (unless (typep (parent node) 'text-element)
+      (push #\newline pre)
+      (push #\newline post))
+    (map 'nil #'part-append pre)
+    (map 'nil #'part-append (nreverse post))))
+
+;(defmethod visit-node((writer latex-writer) (node interpretated))
+;  (part-append "\\texttt{")
+;  (with-modes(:literal) (call-next-method))
+;  (part-append "}"))
 
 (defmethod visit-node((writer latex-writer) (node legend))
-  (part-append (start-tag node "div" '(:class "legend"))
-                #\newline)
+  (part-append "{\\small ")
   (call-next-method)
-  (part-append "</div>" #\newline))
+  (part-append "}"))
 
 (defmethod visit-node((writer latex-writer) (node line))
-  (part-append (start-tag node "div" '(:class "line") ))
-  (if (> (number-children node) 0)
-      (call-next-method)
-      (part-append "<br />"))
-  (part-append "</div>" #\newline))
+  (part-append "\\item[] ")
+  (call-next-method)
+  (part-append #\newline))
 
 (defmethod visit-node((writer latex-writer) (node line-block))
-  (part-append (start-tag node "div" '(:class "line-block"))
-                #\newline)
+  (part-append
+   (if (typep (parent node) 'line-block)
+       "\\item[]
+\\begin{lineblock}{\\lineblockindentation}"
+       "
+\\begin{lineblock}{0em}")
+   #\newline)
   (call-next-method)
-  (part-append "</div>" #\newline))
+  (part-append "\\end{lineblock}" #\newline))
 
 (defmethod visit-node((writer latex-writer) (node list-item))
-  (part-append (start-tag node "li"))
-  (when (> (number-children node) 0)
-    (add-class (child node 0) "first")
-    (call-next-method))
-  (part-append "</li>" #\newline))
-
-(defun words-and-spaces(text)
-  (let((start 0)
-       (tokens nil))
-    (dolist(end (nconc
-                 (cl-ppcre::all-matches
-                  '(:greedy-repetition 1 nil :whitespace-char-class) text)
-                 (list (length text))))
-      (unless (= start end) (push (subseq text start end) tokens))
-      (setf start end))
-    (nreverse tokens)))
+  (part-append "\\item {} ")
+  (call-next-method)
+  (part-append #\newline))
 
 (defmethod visit-node((writer latex-writer) (node literal))
-  (part-append (start-tag node "tt" '(:class "docutils literal"))
-                #\newline)
-  (dolist(token (words-and-spaces (as-text node)))
-    (part-append
-     (cond
-       ((not (line-blank-p token))
-        (format nil "<span clas=\"pre\">~A</span>"
-                (encode token)))
-       ((= 1 (length token)) token)
-       ((with-output-to-string(os)
-          (dotimes(x (1- (length token)))
-            (write-string "&nbsp;" os))
-          (write-char #\space os))))))
-  (part-append "</tt>"))
+  (part-append "\\texttt{")
+  (with-modes(:literal) (call-next-method))
+  (part-append "}"))
 
 (defmethod visit-node((writer latex-writer) (node literal-block))
-  (part-append (start-tag node "pre" '(:class "literal-block"))
-                #\newline)
+  (if (and (setting :use-verbatim-when-possible (document writer))
+           (= 1 (number-children node))
+           (typep (child node 0) 'text))
+      (progn
+        (part-append "\\begin{quote}\\begin{verbatim}" #\newline)
+        (with-modes(writer :verbatim) (call-next-method))
+        (part-append #\newline "\\end{verbatim}\\end{quote}" #\newline))
+      (with-modes(writer :literal-block :insert-non-breaking-blanks)
+        (if (open-p (active-table writer))
+            (progn
+              (part-append #\newline "{\\ttfamily \\raggedright \\noindent"
+                         #\newline)
+              (call-next-method)
+              (part-append #\newline "}" #\newline))
+            (progn
+              (part-append "\\begin{quote}{\\ttfamily \\raggedright \\noindent"
+                           #\newline)
+              (call-next-method)
+              (part-append #\newline "}\\end{quote}" #\newline))))))
+
+(defmethod visit-node((writer latex-writer) (node meta))
+  (part-append "%[visit meta]" #\newline)
   (call-next-method)
-  (part-append #\newline "</pre>" #\newline))
+  (part-append "%[depart meta]" #\newline))
 
-(defmethod visit-node((writer latex-writer) (node docutils.nodes::meta))
-  (with-part(head)
-  (part-append
-   (empty-tag node "meta" (slot-value node 'docutils::attributes))
-   #\newline)))
-
-(defmethod visit-node((writer latex-writer) (node option-group))
-  (let ((atts nil)
-        (long  (> (length (as-text node)) 14)))
-    (when long (setf (getf atts :colspan) 2))
-    (part-append
-                  (start-tag node "td" (when long '(:colspan 2)))
-                  "<kbd>")
-    (let ((prev nil))
-      (with-children(option node)
-        (when prev (part-append ", "))
-        (setf prev option)
-        (visit-node writer option)))
-    (part-append "</kbd></td>" #\newline)
-    (when long
-      (part-append "</tr>" #\newline "<tr><td>&nbsp;</td>"))))
+(defmethod visit-node((writer latex-writer) (node option))
+  (unless (eql node (child (parent node) 0))
+    (part-append ", "))
+  (call-next-method))
 
 (defmethod visit-node((writer latex-writer) (node option-argument))
   (part-append
-                 (or (attribute node :delimiter) #\space)
-                 (start-tag node "var"))
+   (or (attribute node :delimiter) " "))
+  (call-next-method))
+
+(defmethod visit-node((writer latex-writer) (node option-group))
+  (part-append "\\item[")
   (call-next-method)
-  (part-append  "</var>"))
+  (part-append "] "))
 
 (defmethod visit-node((writer latex-writer) (node option-list))
-  (part-append
-                 (start-tag node "table"
-                            '(:class "docutils option-list"
-                              :frame "void" :rules "none"))
-                 "<col class=\"option\" /><col class=\"description\" />"
-                 #\newline
-                 "<tbody valign=\"top\">"
-                 #\newline)
+  (part-append "\\begin{optionlist}{3cm}" #\newline)
   (call-next-method)
-  (part-append  "</tbody>
-</table>
-"))
+  (part-append "\\end{optionlist}"))
 
 (defmethod visit-node((writer latex-writer) (node option-list-item))
-  (part-append  (start-tag node "tr"))
   (call-next-method)
-  (part-append  "</tr>"))
-
-(defmethod visit-node((writer latex-writer) (node option-string))
-  (part-append  (start-tag node "span" '(:class "option")))
-  (call-next-method)
-  (part-append  "</span>"))
+  (part-append "\\\\" #\newline))
 
 (defmethod visit-node((writer latex-writer) (node organization))
-  (add-docinfo-item(writer node "organization")
-                   (call-next-method)))
-
-(defun should-be-compact-p(node)
-  "Determine if the <p> tags around paragraph ``node`` can be omitted."
-  (and
-   (not (typep (parent node) 'document)) ;;Never in document or compound.
-   (not (typep (parent node) 'compound))
-   (member (slot-value node 'docutils::attributes)
-           '(nil (:class "first") (:class "last")
-             (:class "first last"))
-           :test #'equalp)
-   (or *compact-simple*
-       (and *compact-p*
-            (or (= 1 (number-children (parent node)))
-                (and (= 2 (number-children (parent node)))
-                     (typep (child (parent node) 0) 'label)))))))
+  (visit-docinfo-item writer node organization))
 
 (defmethod visit-node((writer latex-writer) (node paragraph))
-  (let ((compact-p (should-be-compact-p node)))
-    (unless compact-p (part-append  (start-tag node "p")))
-    (call-next-method)
-    (unless compact-p (part-append  "</p>" #\newline))))
+  (let ((index (index (parent node) node)))
+    (unless (or (equal (slot-value writer 'topic-class) "contents")
+                (and (> index 0)
+                     (let ((prev (child (parent node) (1- index))))
+                       (and (not (typep prev 'paragraph))
+                            (not (typep prev 'compound))))))
+      (part-append #\newline)))
+  (call-next-method)
+  (part-append #\newline))
 
 (defmethod visit-node((writer latex-writer) (node problematic))
-  (let ((refid (attribute node :refid)))
-    (when refid
-      (part-append (format nil "<a href=\"#~A\" name=\"~A\">"
-                           refid (attribute node :id))))
-    (part-append (start-tag node "span" '(:class "problematic")))
-    (call-next-method)
-    (part-append "</span>")
-    (when refid (part-append  "</a>"))))
+  (part-append "\\color{red}\\bfseries{{}")
+  (call-next-method)
+  (part-append "}"))
 
 (defmethod visit-node((writer latex-writer) (node raw))
-  (when (member :html (attribute node :format))
-    (let ((add-class (when-bind(class (attribute node :class))
-		       (not (eq class :none))))
-          (type (if (typep (parent node) 'text-element) "span" "div")))
-      (when add-class (part-append (start-tag node type)))
-      (part-append (as-text node))
-      (when add-class (part-append "<" type "/>")))))
-
+  (when (member :latex (attribute node :format))
+    (part-append (as-text node))))
 
 (defmethod visit-node((writer latex-writer) (node reference))
-  (let ((inline-p (typep (parent node) 'text-element)))
-    (unless inline-p
-      (assert (and (= 1 (number-children node))
-                   (typep (child node 0) 'image)))
-      (let ((atts (image-div-atts (child node 0))))
-        (setf (getf atts :class)
-              (concatenate 'string (getf atts :class) " image-reference"))
-        (part-append (start-tag nil "div" atts))))
-    (let ((href
-           (cond ((attribute node :refuri))
-                 ((attribute node :refid)
-                  (format nil "#~A" (attribute node :refid)))
-                 ((attribute node :refname)
-                  (format nil "#~A" (gethash (attribute node :refname)
-                                             (nameids (document node))))))))
-      (part-append
-       (start-tag node "a" `(:class "reference"
-				     ,@(when-bind(id (attribute node :id))
-					 `(:id ,(format nil "~A" id)))
-                             ,@(when href `(:href ,href))))))
-    (call-next-method)
-    (part-append "</a>")
-    (unless inline-p (part-append "</div>" #\newline))))
+  (let* ((hash-char "\\#"))
+    (part-append
+     (format nil "\\href{~A"
+             (cond
+               ((attribute node :refuri)
+                (regex-replace "#" (attribute node :refuri) hash-char))
+               ((attribute node :refid)
+                (concatenate 'string hash-char (attribute node :refid)))
+               ((attribute node :refname)
+                (concatenate 'string hash-char
+                             (gethash (attribute node :refname)
+                                      (nameids (document writer)))))
+               ((error "Unknown reference"))))))
+  (part-append "}{")
+  (call-next-method)
+  (part-append "}"))
 
 (defmethod visit-node((writer latex-writer) (node revision))
-  (add-docinfo-item(writer node "revision" :meta nil)
-                   (call-next-method)))
-
-(defmethod visit-node((writer latex-writer) (node row))
-  (part-append (start-tag node "tr"))
-  (call-next-method)
-  (part-append "</tr>" #\newline))
-
-(defmethod visit-node((writer latex-writer) (node rubric))
-  (part-append (start-tag node "p" '(:class "rubric")))
-  (call-next-method)
-  (part-append "</p>" #\newline))
+  (visit-docinfo-item writer node revision))
 
 (defmethod visit-node((writer latex-writer) (node section))
-  (let ((*section-level* (1+ *section-level*)))
-    (part-append (start-tag node "div" '(:class "section")))
-    (call-next-method)
-    (part-append "</div>" #\newline)))
-
-(defvar *in-sidebar* nil)
+  (push 1 (section-numbers writer))
+  (call-next-method)
+  (pop (section-numbers writer)))
 
 (defmethod visit-node((writer latex-writer) (node sidebar))
-  (part-append (start-tag node "div" '(:class "section")))
-  (set-first-last node)
-  (let ((*in-sidebar* t)) (call-next-method))
-  (part-append "</div>" #\newline))
+  (part-append
+"
+\\setlength{\\locallinewidth}{0.9\\admonitionwidth}
+\\begin{center}\\begin{sffamily}
+\\fbox{\\colorbox[gray]{0.80}{\\parbox{\\admonitionwidth}{
+")
+  (call-next-method)
+  (part-append
+   "}}}
+\\end{sffamily}\\end{center}
+\\setlength{\\locallinewidth}{\\linewidth}
+"))
+
+(let ((attribution-formats '(:dash ("---" "")
+                             :parentheses ("(" ")")
+                             :parens ("(" ")")
+                             :none ("" ""))))
+(defmethod visit-node((writer latex-writer) (node attribution))
+  (multiple-value-bind(prefix suffix)
+      (values-list (get
+                    (or (attribute node :attribution) :parens)
+                    attribution-formats))
+    (part-append #\newline "\\begin{flushright}" #\newline prefix)
+    (call-next-method)
+    (part-append suffix #\newline "\\end{flushright}" #\newline))))
 
 (defmethod visit-node((writer latex-writer) (node status))
-  (add-docinfo-item(writer node "status" :meta nil)
-                   (call-next-method)))
+  (visit-docinfo-item writer node status))
 
 (defmethod visit-node((writer latex-writer) (node strong))
-  (part-append "<strong>")
-  (call-next-method)
-  (part-append "</strong>"))
-
-(defmethod visit-node((writer latex-writer) (node subscript))
-  (part-append (start-tag node "sub"))
-  (call-next-method)
-  (part-append "</sub>"))
-
-(defmethod visit-node((writer latex-writer) (node substitution-definition)))
-
-
-(defmethod visit-node((writer latex-writer) (node subtitle))
-  (etypecase (parent node)
-    (sidebar
-     (part-append (start-tag node "p"
-                             '(:class "sidebar-subtitle")))
-     (call-next-method)
-     (part-append "</p>" #\newline))
-    (document
-     (with-part(body-pre-docinfo)
-       (part-append (start-tag node "h2" '(:class "subtitle")))
-       (call-next-method)
-       (part-append "</h2>")
-       ))))
-
-(defmethod visit-node((writer latex-writer) (node superscript))
-  (part-append (start-tag node "sup"))
-  (call-next-method)
-  (part-append "</sup>"))
-
-(defmethod visit-node((writer latex-writer) (node system-message))
-  (unless (< (error-severity node) (setting :report-level (document node)))
-    (part-append
-     (start-tag node "div" '(:class "system-message"))
-     "<p class=\"system-message-title\">")
-    (let ((attr (when-bind(id (attribute node :id)) (list :name id)))
-          (backref-text
-           (let ((backrefs (attribute node :backrefs)))
-             (cond
-               ((not backrefs) "")
-               ((not (rest backrefs))
-                (format nil "; <em><a href=\"#~A\">backlink</a></em>"
-                        (car backrefs)))
-               ((with-output-to-string(os)
-                 (write-string "; <em>backlinks: " os)
-                 (do((ref backrefs (cdr ref))
-                     (i 1 (1+ i)))
-                    ((not ref))
-                   (format os "<a href=\"#~A\">~A</a> " (car ref) i))
-                 (write-string "</em>" os))))))
-          (line (if (line node)
-                    (format nil ", source line ~A"  (line node))
-                    "")))
-      (multiple-value-bind(a-start a-end)
-          (if attr
-              (values (start-tag nil "a" attr) "</a>")
-              (values "" ""))
-        (part-append
-                      (format nil "System Message: ~A~A~A (<tt class=\"docutils\">"
-                              a-start
-			      (attribute node :level)
-                               a-end)))
-      (call-next-method)
-      (part-append
-       (format nil "</tt>~A)~A</p>~%</div>"
-	       line backref-text)))))
-
-(defmethod visit-node((writer latex-writer) (node table))
-  (part-append (start-tag node "table"
-					'(:class "docutils" :border "1")))
+  (let ((txt "\\texbf{"))
+    (part-append txt)
+    (push txt (literal-block-stack writer))
     (call-next-method)
-    (part-append "</table>" #\newline))
+    (pop (literal-block-stack writer))
+    (part-append "}")))
 
-(defmethod visit-node((writer latex-writer) (node target))
-  (let ((a (or (attribute node :refuri)
-               (attribute node :refid)
-               (attribute node :refname))))
-    (when (not a)
-      (part-append (start-tag node "a" `(:class "target" :name ,a))))
-    (call-next-method)
-    (when (not a) (part-append "</a>"))))
-
-(defmethod visit-node((writer latex-writer) (node tbody))
-    (part-append (start-tag node "tbody" '(:valign "top" )))
-    (call-next-method)
-    (part-append "</tbody>" #\newline))
-
-(defmethod visit-node((writer latex-writer) (node term))
-  (part-append (start-tag node "dt" ))
-  (call-next-method)
-  ;; Leave the end tag to `self.visit_definition()`, in case there's a
-  ;; classifier
+(defmethod visit-node((writer latex-writer) (node substitution-definition))
   )
 
-(defmethod visit-node((writer latex-writer) (node tgroup))
-  (let (colwidths rest)
-    (with-children(child node)
-      (etypecase child
-	(colspec (push (attribute child :colwidth) colwidths))
-	(thead (push child rest))
-	(tbody (push child rest))))
-    (part-append (start-tag node "colgroup"))
-    (let ((width (reduce #'+ colwidths)))
-      (dolist(colwidth (nreverse colwidths))
-	(part-append
+(defmethod visit-node((writer latex-writer) (node substitution-reference))
+  (error "Substitution reference unimplemented"))
 
-	 (empty-tag
-	  node "col"
-	  (list :width
-		(format nil "~d%" (round (/ (* 100 colwidth) width))))))))
-    (part-append "</colgroup>" #\newline)
-    (dolist(child (nreverse rest)) (visit-node writer child))))
+(defmethod visit-node((writer latex-writer) (node subtitle))
+  (cond
+    ((typep (parent node) 'sidebar)
+     (part-append "~\\\\" #\newline "\\textbf{")
+     (call-next-method)
+     (part-append "}" #\newline "\\smallskip" #\newline))
+    (t
+     (setf (title writer)
+           (format nil "~A\\\\~%\\large{~A}~%"
+                   (title writer)
+                   (encode writer (as-text node)))))))
+
+(defmethod visit-node((writer latex-writer) (node table))
+  (let ((table (active-table writer)))
+    (when (open-p table)
+      (error "Nested tables are not supported"))
+    (open-table table)
+    (part-append #\newline (opening table))
+    (call-next-method)
+    (part-append (closing table) #\newline)
+    (close-table table)))
+
+(defmethod visit-node((writer latex-writer) (node target))
+  (if (or (attribute node :refuri)
+          (attribute node :refid)
+          (attribute node :refname))
+      (call-next-method)
+      (progn
+        (part-append (format nil "\\hypertarget{~A}{" (attribute node :id)))
+        (call-next-method)
+        (part-append "}"))))
+
+(defun ensure-table-preamble(writer)
+  (let ((table (active-table writer)))
+    (unless (slot-value table 'preamble-written)
+      (part-append
+       (format nil "{~A}~@[~A~]~%" (colspecs table) (caption table))
+       (visit-thead table))
+      (setf (slot-value table 'preamble-written) t))))
+
+(defmethod visit-node((writer latex-writer) (node tbody))
+  (ensure-table-preamble writer)
+  (call-next-method))
+
+(defmethod visit-node((writer latex-writer) (node term))
+  (part-append "\\item[")
+  (call-next-method)
+  (part-append "]"))
 
 (defmethod visit-node((writer latex-writer) (node thead))
-  (part-append (start-tag node "thead" '(:valign "bottom" )))
+  (ensure-table-preamble writer)
   (call-next-method)
-  (part-append "</thead>" #\newline))
+  (part-append
+   (second (multiple-value-list (visit-thead (active-table writer))))))
+
+(defun bookmark(writer node)
+  (when-bind(id (attribute (parent node) :id))
+    (part-append (format nil "\\hypertarget{~A}{}~%" id))
+    (unless (setting :use-latex-toc (document writer))
+      (let ((l (length (section-numbers writer))))
+        (when (> l 0) (decf l))
+        (part-append (format nil "\\pdfbookmark[~d]{~s}{~s}~%"
+                             l (encode writer (as-text node)) id))))))
 
 (defmethod visit-node((writer latex-writer) (node title))
-  (cond
-    ((typep (parent node) 'document) ;; document title
-     (with-part(head)
-       (part-append (format nil "<title>~A</title>~%"
-                            (encode (as-text node)))))
-     (with-part(body-pre-docinfo)
-       (part-append (start-tag node "h1" '(:class "title")))
+  (let ((parent (parent node)))
+    (cond
+      ((typep parent 'topic)
+       (bookmark writer node)
+       (part-append "\\subsubsection*{~\\hfill ")
        (call-next-method)
-       (part-append "</h1>" #\newline)))
-    ((typep (parent node) 'section)
-     (let ((h (format nil "h~D"
-                      (+ *section-level*
-                         (setting :initial-header-level (document node)))))
-           (atts nil))
-       (part-append (start-tag node h))
-       (when-bind(id (attribute (parent node) :id))
-         (setf (getf atts :name) id))
-       (when-bind(refid (attribute node :refid))
-         (setf (getf atts :class) "toc-backref")
-         (setf (getf atts :href) (format nil "#~A" refid)))
-       (part-append (start-tag nil "a" atts))
+       (part-append "\\hfill ~}" #\newline))
+      ((or (typep parent 'sidebar) (typep parent 'admonition))
+       (part-append "\\textbf{\\large ")
        (call-next-method)
-       (part-append "</a></" h ">" #\newline)))
-    (t (multiple-value-bind(tagname class)
-           (etypecase (parent node)
-             (topic (values "p" "topic-title"))
-             (sidebar (values "p" "sidebar-title"))
-             (admonition (values "p" "admonition-title"))
-             (table (values "table")))
-         (part-append (start-tag node tagname (when class `(:class ,class))))
-         (let ((pid (attribute (parent node) :id)))
-           (when pid
-             (part-append (start-tag nil "a" `(:name ,pid))))
-           (call-next-method)
-           (when pid (part-append "</a>")))
-         (part-append "</" tagname ">" #\newline)))))
+       (part-append "}" #\newline "\\smallskip" #\newline))
+      ((typep parent 'table)
+       (setf (slot-value (active-table writer) 'caption)
+             (encode writer (as-text node))))
+      ((zerop (length (section-numbers writer)))
+       ;; document title
+       (let ((txt (encode writer (as-text node))))
+         (setf (slot-value writer 'title) txt)
+         (with-part(pdfinfo)
+           (part-append (format nil "pdftitle={~A}" txt)))))
+      (t
+       (part-append "
 
-(defmethod visit-node((writer latex-writer) (node docutils.nodes:title-reference))
-  (part-append (start-tag node "cite"))
-  (call-next-method)
-  (part-append "</cite>"))
+%---------------------------------------------------------------------------
+
+")
+       (bookmark writer node)
+       (part-append (format nil "\\~A~:[~;*~]{"
+                            (section writer)
+                            (setting :use-latex-toc (document writer))))
+       (call-next-method)
+       (part-append "}" #\newline)))))
 
 (defmethod visit-node((writer latex-writer) (node topic))
-  (part-append (start-tag node "div" '(:class "topic")))
-  (let ((*topic-class* (attribute node :class)))
-    (call-next-method))
-  (part-append "</div>" #\newline))
+  (if (setting :use-latex-toc (document writer))
+      (progn
+        (setf (slot-value writer 'topic-class) nil)
+        (part-append "\\tableofcontents" #\newline #\newline
+                     "\\bigskip" #\newline))
+      (progn
+        (setf (slot-value writer 'topic-class) (attribute node :class))
+        (call-next-method)
+        (setf (slot-value writer 'topic-class) nil)
+        (part-append #\newline))))
+
+(defmethod visit-node((writer latex-writer) (node docutils.nodes:inline))
+  (if (attribute node :class)
+      (progn
+        (part-append (format nil "\\docutilsrole~A{"
+                             (string-downcase (attribute node :class))))
+        (call-next-method)
+        (part-append "{"))
+      (call-next-method)))
+
+(defmethod visit-node((writer latex-writer) (node rubric))
+  (part-append "\\rubric{")
+  (call-next-method)
+  (part-append "}"))
 
 (defmethod visit-node((writer latex-writer) (node transition))
-  (part-append (empty-tag node "hr" '(:class "docutils"))))
+  (part-append "
+
+%___________________________________________________________________________
+
+\\hspace*{\\fill}\\hrulefill\\hspace*{\\fill}
+
+")
+  (call-next-method))
 
 (defmethod visit-node((writer latex-writer) (node version))
-  (add-docinfo-item(writer node "version" :meta nil)
-                   (call-next-method)))
+  (visit-docinfo-item writer node version))
+#|
+
+testing
+
+(setq *document*
+      (read-document
+       #p"/home/willijar/www/clews/tutorials/articles/adsl-transmitter.rst"
+       (make-instance 'docutils.parser.rst:rst-reader)))
+
+(write-document (make-instance 'latex-writer) *document* *standard-output*)
+
+|#

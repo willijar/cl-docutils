@@ -1,5 +1,5 @@
 ;;;; System definition for doc handling -*- Lisp -*-
-;;;; Copyright (C) 2005 John A.R. Williams <J.A.R.Williams@jarw.org.uk>
+;;;; Copyright (C) 2006-2008 John A.R. Williams <J.A.R.Williams@jarw.org.uk>
 ;;;; Released under the GNU General Public License (GPL)
 ;;;; See <http://www.gnu.org/copyleft/gpl.html> for license details
 ;;;;
@@ -51,4 +51,5 @@
             :depends-on ("parsers")
             :components
             ((:file "html")
+             (:file "latex")
              (:file "markup" :depends-on ("html"))))))

@@ -49,4 +49,16 @@ containing an a-list mapping  translated form to a cannonical form")
   (gethash text (translation-translated (get-translation language)) text))
 
 (defun author-separators( &optional (language *language*))
-  (gethash :author-separators (translation-canonical (get-translation language)) '('\, #\;)))
+  (gethash :author-separators
+           (translation-canonical (get-translation language)) '('\, #\;)))
+
+(defun babel( &optional (language *language*))
+  (gethash :babel (translation-canonical (get-translation language)) "english"))
+
+(defun latex-quotes( &optional (language *language*))
+  (gethash :latex-quotes
+           (translation-canonical (get-translation language)) '("``" "''")))
+
+(defun latex-double-quote-replacement( &optional (language *language*))
+  (gethash :latex-double-quote-replacement
+           (translation-canonical (get-translation language))))

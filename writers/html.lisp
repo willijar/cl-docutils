@@ -312,8 +312,8 @@ specified. Default is not to do this (as recommended).")
 
 (defmethod visit-node((writer html-writer) (node classifier))
   (part-append
-                " <span class=\"classifier-delimiter\">:</span> "
-                (start-tag node "span"  `(:class "classifier")))
+   " <span class=\"classifier-delimiter\">:</span> "
+   (start-tag node "span"  `(:class "classifier")))
   (call-next-method)
   (part-append "</span>"))
 

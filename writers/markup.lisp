@@ -48,3 +48,6 @@
       (setf (slot-value document 'docutils::children) (list node))
       (setf (document *markup-rst-writer*) document)
       (docutils:write-part *markup-rst-writer* 'body stream))))
+
+(defun markup::parse-structured-text(text)
+  `(markup::rst ,text))
