@@ -1986,7 +1986,10 @@ as ordinary text because it's so short."
 
                (let ((title nil)
                      (docinfo nil))
-                 (format t "state=~A~%node=~A~%document=~S~%title=~S~%docinfo=~S~%~%" state (node state-machine) *document* title docinfo)
+                 (format
+                  t
+                  "state=~A~%node=~A~%document=~S~%title=~S~%docinfo=~S~%~%"
+                  state (node state-machine) *document* title docinfo)
                  (with-nodes(child *document*)
                    (cond
                      ((and (not title) (typep child 'docutils.nodes:title))
@@ -2003,7 +2006,93 @@ as ordinary text because it's so short."
           docutils.parser::*state-change-hooks*)))
     (catch :finished-metadata (call-next-method)))))
 
-(defun testit(&optional (name "B"))
-  (docutils:read-document
-   (merge-pathnames name "/home/willijar/dev/lisp/src/docutils/tests/*.txt")
-   (make-instance 'metadata-reader)))
+;;; interface for more sophisticated multisource documents.
+
+(defgeneric title(source)
+  (:documentation "Return the subsection title for a source"))
+
+(defgeneric metadata(source)
+  (:documentation "Return an a-list of metadata elements for a source")
+  (:method(source) nil))
+
+(defgeneric subsections(source)
+  (:documentation "Return an ordered list of subsection sources for a source")
+  (:method(source) nil))
+
+(defgeneric pre-parse-hooks(reader)
+  (:documentation
+   "list of hooks to call with source and parent node before parsing"))
+
+(defgeneric post-parse-hooks(reader)
+  (:documentation
+   "list of hooks to call with source and parent node after parsing"))
+
+(defun insert-title(source reader parent-node)
+  (declare (ignore reader))
+  (let ((title-node (make-node 'title)))
+    (add-child parent-node title-node)
+    (add-child title-node (inline-text (title source) 0))
+    (setf (attribute parent-node :name)
+          (normalise-name (as-text title-node)))))
+
+(defun insert-metadata(source reader parent-node)
+  (declare (ignore reader))
+  (let ((metadata (metadata source))
+        (documentp (typep parent-node 'document)))
+    (when metadata
+      (let ((container
+             (docutils:make-node (if documentp 'docinfo 'field-list))))
+        (add-child container parent-node)
+        (dolist(metadata-item (metadata source))
+          (let ((name (string-downcase (car metadata-item)))
+                (value (cdr metadata-item)))
+            (if documentp
+                (let ((node-type
+                       (member name
+                               '(author authors organization address contact
+                                 version revision status date copyright)
+                               :key #'string-downcase :test #'equal)))
+                  (when node-type
+                    (add-child container (docutils:make-node node-type value))))
+                (let ((field (make-node 'field)))
+                  (add-child container field)
+                  (add-child field (make-node 'field-name name))
+                  (add-child field (make-node 'field-body value))))))))))
+
+(defun read-subsections(source reader parent-node)
+  (dolist(source (subsections source))
+    (let* ((*title-styles* nil)
+           (*section-level* 0))
+      (let* ((section-node (make-node 'section)))
+        (add-child parent-node section-node)
+        (dolist(hook (pre-parse-hooks reader))
+          (funcall hook source reader section-node))
+      (let ((state-machine (make-instance 'nested-state-machine)))
+        (state-machine-run state-machine (read-lines source)
+                           :body 'section
+                           :node section-node
+                           :match-titles t))
+      (dolist(hook (post-parse-hooks reader))
+        (funcall hook source reader section-node))))))
+
+(defclass extended-rst-reader(rst-reader)
+  ((pre-parse-hooks
+    :initarg :pre-parse-hooks :reader pre-parse-hooks :initform nil
+    :documentation "List of functions called before parsing -
+    functions take 3 arguments - the source entity, the reader and the
+    parent node. examples include insert-title and insert-metadata")
+   (post-parse-hooks
+    :initarg :post-parse-hooks :reader post-parse-hooks :initform nil
+    :documentation "List of functions called after parsing - functions
+    take 3 arguments - the source entity, the reader and the parent
+    node. examples include insert-title and read-subsections." ))
+  (:documentation "A reader which will recursively read from an entity
+  and recurse down through subsections, reading them in turn"))
+
+(defmethod read-document(source (reader extended-rst-reader))
+  (let ((parent-node *document*))
+    (dolist(hook (pre-parse-hooks reader))
+      (funcall hook source reader parent-node))
+    (call-next-method)
+    (dolist(hook (post-parse-hooks reader))
+      (funcall hook source reader parent-node))))

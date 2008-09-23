@@ -132,7 +132,7 @@ specified. Default is not to do this (as recommended).")
   (encode
    (with-output-to-string(os)
     (loop
-     for c across string
+     for c across (string string)
      do (if (wsp-char-p c) (write-char #\space os)  (write-char c os))))))
 
 (defun start-tag(node tagname &optional attributes (infix "") )
@@ -470,7 +470,7 @@ specified. Default is not to do this (as recommended).")
       ;(setf (getf atts :align) (attval align))
       (setf (getf atts :class)
             (concatenate 'string
-                         (getf atts :class) " align-" align)))
+                         (getf atts :class) " align-" (string align))))
     (part-append (start-tag node "div" atts))
     (call-next-method)
     (part-append "</div>" #\newline)))

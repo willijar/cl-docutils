@@ -28,11 +28,12 @@
   (defmethod html((stream stream) (tag (eql 'markup::rst))
                   &optional attr content)
     (declare (ignore attr))
-    (with-lock(mutex) ;; share state so lock
-      (setf (document *markup-rst-writer*)
-            (read-document (if (listp content) (car content) content)
-                           *markup-rst-reader*))
-      (docutils:write-part *markup-rst-writer* 'body stream)))
+    (when content
+      (with-lock(mutex) ;; share state so lock
+        (setf (document *markup-rst-writer*)
+              (read-document (if (listp content) (car content) content)
+                             *markup-rst-reader*))
+        (docutils:write-part *markup-rst-writer* 'body stream))))
   (defmethod html((stream stream) (document docutils.nodes:document)
                   &optional attr content)
     (declare (ignore attr content))
@@ -49,5 +50,5 @@
       (setf (document *markup-rst-writer*) document)
       (docutils:write-part *markup-rst-writer* 'body stream))))
 
-(defun markup::parse-structured-text(text)
+(defun markup::parse-restructured-text(text)
   `(markup::rst ,text))

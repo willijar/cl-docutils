@@ -800,11 +800,13 @@ not supported in Latex"))
                  (section-numbers writer))
         (setf enum-prefix
               (concatenate 'string enum-prefix
-                           (format nil "~{~D.~}" (reverse (section-numbers writer))))))
+                           (format nil "~{~D.~}"
+                                   (reverse (section-numbers writer))))))
 
       (setf enum-prefix
               (concatenate 'string enum-prefix
-                           (format nil "~{~A.~}" (reverse (enumeration-counters writer))))))
+                           (format nil "~{~A.~}"
+                                   (reverse (enumeration-counters writer))))))
     (let ((counter-name
            (format nil "listcnt~D"
                    (1+ (length (enumeration-counters writer))))))
@@ -816,8 +818,8 @@ not supported in Latex"))
        (format nil "{~%\\usecounter{~A}~%" counter-name))
       (let ((start (attribute node :start)))
         (when start
-          (part-append "\\addtocounter{~A}{~D}~%"
-                       counter-name (1- start))))
+          (part-append (format nil "\\addtocounter{~A}{~D}~%"
+                               counter-name (1- start)))))
       (part-append "\\setlength{\\rightmargin}{\\leftmargin}~%}~%")))
   (call-next-method)
   (part-append "\\end{list}" #\newline)
