@@ -374,13 +374,13 @@ In reStructuredText_, there is no way to specify a document title
             ((= (length authornodes) 1)
              (add-child docinfo (first authornodes)))
             (t (error 'transform-condition))))
-      ((transform-condition()
+      (transform-condition()
         (report :warning `("Bibliographic field ~s incompatible with
 extraction: it must contain either a single paragraph (with authors
 separated by one of ~A), multiple paragraphs (one per author), or a
 bullet list with one paragraph (one author) per item" ,name
                            ,(author-separators))
-                :node field))))))
+                :node field)))))
 
 (defun authors-from-paragraph(paragraph)
   (let ((text (strip (as-text (child paragraph 0)))))
