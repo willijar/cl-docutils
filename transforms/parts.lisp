@@ -122,50 +122,65 @@
 
 (register-settings-spec
  '((:figure-number (integer :nil-allowed t) 1 "Number figures")
+   (:table-number (integer :nil-allowed t) 0 "Number tables. If >0 number number tables separately from figures. If 0 number as figures.")
    (:equation-number (integer :nil-allowed t) 1 "Number equations")))
 
 (defun number-figures(document &key
                       (figlabel #'write-to-string)
                       (eqnlabel #'(lambda(n) (format nil "(~D)" n))))
   (let ((figc (setting :figure-number document))
-        (eqnc (setting :equation-number document)))
+        (eqnc (setting :equation-number document))
+        (tabc 0))
     (let ((labels (make-hash-table))) ;; collate refnames and labels
-      ;; Add generated
-      (dolist(target (internal-targets document))
-        (let ((next (next-sibling target)))
-          (cond
-            ((and figc (typep next 'docutils.nodes:figure))
-             (let ((caption
-                    (or
-                     (with-children(c next)
-                       (when (typep c 'docutils.nodes:caption)
-                         (throw :skip-siblings c)))
-                     (let ((caption (make-node 'docutils.nodes:caption)))
-                       (add-child next caption)
-                       caption)))
-                   (label (funcall figlabel figc)))
-               (incf figc)
-               (let ((generated
-                      (make-node 'docutils.nodes:generated
-                                 (concatenate
-                                  'string
-                                  (translated-text "Figure" (language next))
-                                  " " label ". "))))
+      (flet ((add-fig-caption(target next counter text)
+               (let* ((caption
+                       (or
+                        (with-children(c next)
+                          (when (typep c 'docutils.nodes:caption)
+                            (throw :skip-siblings c)))
+                        (let ((caption (make-node 'docutils.nodes:caption)))
+                          (add-child next caption)
+                          caption)))
+                      (label (funcall figlabel counter))
+                      (generated
+                       (make-node 'docutils.nodes:generated
+                                  (concatenate
+                                   'string
+                                   (translated-text text (language next))
+                                   " " label ". "))))
                  (setf (gethash (attribute target :id) labels) label)
                  (add-child caption generated 0))))
-            ((and eqnc (typep next 'docutils.nodes:equation))
-             (let ((label (funcall eqnlabel eqnc)))
-               (incf eqnc)
-               (add-child next (make-node 'docutils.nodes:generated label))
-               (setf (gethash (attribute target :id) labels) label))))))
-      (let ((refids (refids document)))
-        (maphash
-         #'(lambda(name label)
-             (let ((refs (gethash name refids)))
-               (dolist(ref refs)
-                 (rem-child ref 0)
-                 (add-child ref (make-node 'docutils.nodes:text label) 0))))
-        labels)))))
+        (setq cl-user::*t* (list document tabc figc))
+
+      ;; Add generated
+        (dolist(target (internal-targets document))
+          (let ((next (next-sibling target)))
+            (cond
+              ((and figc (typep next 'docutils.nodes:figure))
+               (add-fig-caption target next figc "Figure")
+               (incf figc))
+              ((and tabc (typep next 'docutils.nodes:table))
+               (setq cl-user::*t* (list target next tabc figc))
+               (cond
+                 ((zerop tabc)
+                  (add-fig-caption target next figc "Figure")
+                  (incf figc))
+                 (t
+                  (add-fig-caption target next tabc "Table")
+                  (incf tabc))))
+              ((and eqnc (typep next 'docutils.nodes:equation))
+               (let ((label (funcall eqnlabel eqnc)))
+                 (incf eqnc)
+                 (add-child next (make-node 'docutils.nodes:generated label))
+                 (setf (gethash (attribute target :id) labels) label))))))
+        (let ((refids (refids document)))
+          (maphash
+           #'(lambda(name label)
+               (let ((refs (gethash name refids)))
+                 (dolist(ref refs)
+                   (rem-child ref 0)
+                   (add-child ref (make-node 'docutils.nodes:text label) 0))))
+           labels))))))
 
 (defclass fignum(transform)
   ()

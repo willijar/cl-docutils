@@ -302,6 +302,7 @@ lambda-list::= ({var | (var [specializer])}*
     (add-child node (join-strings content #\newline))
     (add-child parent node)))
 
+
 (def-directive replace(parent &content content &content-parser parser)
   (cond
     ((not (typep parent 'docutils.nodes:substitution-definition))
@@ -665,3 +666,22 @@ directive not supported (specified by ~s role) " base-role-name)))
     (funcall parser node)))
 
 
+; tables
+
+(def-directive table(parent title &allow-spaces &option (class class) (width length) (align align) &content content &content-parser parser)
+  (if content
+      (let ((table
+             (let ((dummy (make-node 'element)))
+               (funcall parser dummy)
+               (child dummy 0))))
+        (when class (setf (attribute table :class) class))
+        (when width (setf (attribute table :width) width))
+        (when align (setf (attribute table :align) align))
+        (when title
+          (let ((titlenode (make-node 'caption)))
+            (add-child table titlenode 0)
+            (add-child titlenode (parse-inline rst-patterns title))))
+        (remove-node table)
+        (add-child parent table))
+      (report
+       :error "Content block expected for the table directive; none found.")))
