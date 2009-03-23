@@ -259,11 +259,13 @@ lambda-list::= ({var | (var [specializer])}*
                              (align align)
                              target
                              (class class)
-                             (figwidth figwidth)
-                             (figclass class)
+                             (figwidth length)
+                             (figclass length)
                              &content content
                              &content-parser parser)
   (let ((figure-node (make-node 'figure)))
+    (unless figwidth (setf figwidth width))
+    (unless figclass (setf figclass class))
     (when figwidth (setf (attribute figure-node :width) figwidth))
     (when figclass (setf (attribute figure-node :class) figclass))
     (when align (setf (attribute figure-node :align) align))
