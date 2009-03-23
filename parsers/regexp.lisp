@@ -43,7 +43,7 @@
 (define-parse-tree-synonym shortopt
     (:sequence
      (:NEGATIVE-LOOKBEHIND (:alternation #\+ #\-))
-     (:register (:sequence (:alternation #\+ #\-) alphanum))
+     (:register (:sequence (:alternation #\+ #\-) alpha))
      (:greedy-repetition 0 1
 			 (:sequence
 			  (:register #\space)
