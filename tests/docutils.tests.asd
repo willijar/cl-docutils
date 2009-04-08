@@ -8,5 +8,5 @@
 (in-package :asdf)
 (defsystem docutils.tests
   :name "Docutils Tests"
-  :depends-on (:docutils :docutils.figures)
+  :depends-on (:docutils)
   :components ((:file "tests")))

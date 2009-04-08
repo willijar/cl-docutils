@@ -24,8 +24,9 @@
 
 (defun run-tests(&optional (dir (directory #p"/home/willijar/dev/lisp/src/docutils/tests/*.txt"))
                  (os *debug-io*))
-  (let* ((reader (make-instance 'docutils.parser.rst:rst-reader))
-         (writer (make-instance 'docutils.writer.html:html-writer)))
+  (let ((reader (make-instance 'docutils.parser.rst:rst-reader))
+        (html-writer (make-instance 'docutils.writer.html:html-writer))
+        (latex-writer (make-instance 'docutils.writer.latex:latex-writer)))
     (dolist(fname dir)
       (format os "~%~%;; ~A~%" fname)
       (let ((document (docutils:read-document fname reader)))
@@ -42,5 +43,10 @@
                            :direction :output
                            :if-exists :supersede
                            :if-does-not-exist :create)
-          (docutils:write-document writer document os))))))
+          (docutils:write-document html-writer document os))
+        (with-open-file(os (merge-pathnames (make-pathname :type "tex") fname)
+                           :direction :output
+                           :if-exists :supersede
+                           :if-does-not-exist :create)
+          (docutils:write-document latex-writer document os))))))
 
