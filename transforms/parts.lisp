@@ -150,8 +150,6 @@
                                    " " label ". "))))
                  (setf (gethash (attribute target :id) labels) label)
                  (add-child caption generated 0))))
-        (setq cl-user::*t* (list document tabc figc))
-
       ;; Add generated
         (dolist(target (internal-targets document))
           (let ((next (next-sibling target)))
@@ -160,7 +158,6 @@
                (add-fig-caption target next figc "Figure")
                (incf figc))
               ((and tabc (typep next 'docutils.nodes:table))
-               (setq cl-user::*t* (list target next tabc figc))
                (cond
                  ((zerop tabc)
                   (add-fig-caption target next figc "Figure")

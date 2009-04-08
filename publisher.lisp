@@ -117,17 +117,17 @@ applied after parsing"))
 (defmethod read-document :around (source (reader reader))
   (let ((*pending-transforms* (transforms reader))
         (*document* (new-document source)))
+    (setq cl-user::*document* *document*) ;; for debugging purposes
     (call-next-method)
     (do-transforms *pending-transforms* *document*)
     *document*))
 
-(defun handle-transform-condition(e document &optional messages)
-  "Deal with transform errors, reporting messages in messages node if
-supplied"
+(defun handle-transform-condition(e document messages)
+  "Deal with transform errors, adding system message to messages node"
   (let ((report-level (setting :report-level document))
         (halt-level  (setting :halt-level document))
         (msg (make-node 'system-message e)))
-    (when messages (add-child messages msg))
+    (add-child messages msg)
     (when (error-node e)
       (add-backref msg (set-id (error-node e) document)))
     (when (>= (error-severity e) report-level)
@@ -136,25 +136,18 @@ supplied"
               (error-level e)
               (error-line e)
               (error-message e)))
-    (if (>= (error-severity e) halt-level)
+   (if (>= (error-severity e) halt-level)
         (error e)
         (invoke-restart 'system-message msg))))
 
-(defun system-messages-section(document)
-  "Return (and if necessary add) a system message section node at the
-end of the document"
-  (let ((lastnode (child document (1- (number-children document))))
-        (title  "Docutils System Messages"))
-    (if (string-equal (title lastnode) title)
-        lastnode
-        (let ((section (make-node 'section)))
-           (add-child document section)
-           (add-child section (make-node 'title title))
-           section))))
-
 (defmethod do-transforms((transforms list) document)
   (unless (= 0 (number-children document))
-    (let ((messages (system-messages-section document)))
+    (let ((messages (make-node 'section)))
+      ;; note we don't actually add messages to document until transforms are
+      ;; actually completed i.e. the transforms don't apply
+      ;; to the system message section
+      (setf (slot-value messages 'parent) document)
+      (add-child messages (make-node 'title "Docutils System Messages"))
       (handler-bind
           ((markup-condition
             #'(lambda(e) (handle-transform-condition e document messages))))
@@ -164,17 +157,18 @@ end of the document"
                             (etypecase transform
                               (transform transform)
                               (symbol
-                               (make-instance transform :node *document*))
+                               (make-instance transform :node document))
                               (function
                                (make-instance
                                 'docutils.transform:simple-transform
                                 :function transform
-                                :node *document*))))
+                                :node document))))
                         transforms)
                        #'transform-cmp))
           (transform transform)))
-      (when (< (number-children messages) 2)
-        (remove-node messages)))))
+      (when (> (number-children messages) 1)
+        (setf (slot-value document 'children)
+              (nconc (slot-value document 'children) (list messages)))))))
 
 
 ;;; -------------------------------------------------
