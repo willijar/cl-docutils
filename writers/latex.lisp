@@ -11,6 +11,7 @@
   (:use :cl :docutils  :docutils.utilities  :docutils.nodes :cl-ppcre)
   (:shadowing-import-from :cl #:warning #:error #:inline #:special)
   (:import-from :jarw.lib #:when-bind #:is-prefix-p)
+  (:import-from :jarw.string #:join-strings)
   (:import-from :split-sequence #:split-sequence)
   (:export #:latex-writer))
 
@@ -215,51 +216,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
 (defclass latex-writer(writer)
   ((document-class :initform "article" :initarg :document-class
                    :reader document-class)
-   (optionlist-environment
-    :initform
-    "\\newcommand{\\optionlistlabel}[1]{\\bf #1 \\hfill}
-\\newenvironment{optionlist}[1]
-{\\begin{list}{}
-{\\setlength{\\labelwidth}{#1}
-\\setlength{\\rightmargin}{1cm}
-\\setlength{\\leftmargin}{\\rightmargin}
-\\addtolength{\\leftmargin}{\\labelwidth}
-\\addtolength{\\leftmargin}{\\labelsep}
-\\renewcommand{\\makelabel}{\\optionlistlabel}}
-}{\\end{list}}")
-   (lineblock-environment
-    :initform
-    "\\newlength{\\lineblockindentation}
-\\setlength{\\lineblockindentation}{2.5em}
-\\newenvironment{lineblock}[1]
-{\\begin{list}{}
-{\\setlength{\\partopsep}{\\parskip}
-\\addtolength{\\partopsep}{\\baselineskip}
-\\topsep0pt\\itemsep0.15\\baselineskip\\parsep0pt
-\\leftmargin#1}
-\\raggedright}
-{\\end{list}}")
-   (footnote-floats
-    :initform
-    "% begin: floats for footnotes tweaking.,
-\\setlength{\\floatsep}{0.5em},
-\\setlength{\\textfloatsep}{\\fill},
-\\addtolength{\\textfloatsep}{3em},
-\\renewcommand{\\textfraction}{0.5},
-\\renewcommand{\\topfraction}{0.5},
-\\renewcommand{\\bottomfraction}{0.5},
-\\setcounter{totalnumber}{50},
-\\setcounter{topnumber}{50},
-\\setcounter{bottomnumber}{50},
-% end floats for footnotes")
-   (some-commands
-    :initform
-    "% some commands, that could be overwritten in the style file.
-\\newcommand{\\rubric}[1]
-{\\subsection*{~\\hfill {\\it #1} \\hfill ~}}
-\\newcommand{\\titlereference}[1]{\\textsl{#1}}
-% end of \"some commands\"")
-   (class-sections
+      (class-sections
     :reader class-sections
     :initform
     '(("book" "chapter" "section" "subsection" "subsubsection"
@@ -277,13 +234,13 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
    (active-table :reader active-table)
    (topic-class :initform nil)
    (title :initform "" :accessor title)
+   (date :accessor date :documentation "Set date")
+   (author-stack :initform nil :accessor author-stack
+                 :documentation "List of author information")
    (mode :initform nil
          :documentation "List of Modes currently active e.g. :literal :mathmode :literal-block")
    (literal-block-stack :initform nil :accessor literal-block-stack
                         :documentation "Nested literal blocks")
-   (author-stack :initform nil :accessor author-stack
-                 :documentation "List of author information")
-   (date :accessor date :documentation "Set date")
    (dependencies :initform nil :accessor dependencies
                  :documentation "List of dependencie uris")
    (section-numbers :initform nil :accessor section-numbers
@@ -295,6 +252,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
    ;; parts of document filled in during translate
    head-prefix
    pdfinfo
+   pdfauthor
    head
    body-prefix
    docinfo
@@ -304,7 +262,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
    footer
    tmp-parts)
   (:default-initargs :parts
-      '(head-prefix pdfinfo  head body-prefix docinfo body footer body-suffix))
+      '(head-prefix pdfinfo pdfauthor head body-prefix docinfo body footer body-suffix))
   (:documentation "Docutils latex writer"))
 
 (defmacro collect-parts(&body body)
@@ -361,7 +319,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
 
 (defmethod visit-node ((writer latex-writer) (document document))
     (with-slots(mode section-numbers active-table bibitems) writer
-      (setf section-numbers (list 0)
+      (setf section-numbers nil
             mode nil
             bibitems nil
             active-table (make-instance
@@ -374,10 +332,6 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
                (setting :latex-document-options document)
                (babel *language*)
                (setting :latex-document-class document)))
-      (part-append
-       (format nil "~{\\usepackage{~A}~%~}"
-                '("babel" "shortvrb" "tabularx" "longtable" "amsmath"
-                  "color" "multirow" "ifthen")))
       (part-append (used-packages (active-table writer)) #\newline)
       (part-append
        (let ((color (setting :hyperlink-color document)))
@@ -405,28 +359,19 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
          (t (format nil "\\usepackage[~A]{graphicx}"
                     (string-downcase (setting :graphicx-option document)))))
        #\newline)
-      (part-append
-       "\\setlength{\\extrarowheight}{2pt}
-\\newlength{\\admonitionwidth}
-\\setlength{\\admonitionwidth}{0.9\\textwidth}
-\\newlength{\\docinfowidth}
-\\setlength{\\docinfowidth}{0.9\\textwidth}
-\\newlength{\\locallinewidth}")
-      (dolist(s '(optionlist-environment lineblock-environment
-                  footnote-floats some-commands))
-        (part-append (slot-value writer s) #\newline))
+      (part-append "\\input{docutils.tex}" #\newline)
       (when-bind (stylesheet (setting :latex-stylesheet document))
-                 (part-append (format nil "\\input{~A}~%" stylesheet))))
+        (part-append (format nil "\\input{~A}~%" stylesheet))))
+    (setq *document* document)
     (unless (setting :use-latex-docinfo document)
       (with-part(head)
         (part-append "\\author{}\\title{}" #\newline)))
-    (with-part(body-suffix) (part-append #\newline))
     (with-part(body-prefix)
-      (part-append "\\begin{document}" #\newline)
+      (part-append #\newline "\\begin{document}" #\newline)
       (when (setting :use-latex-docinfo (document writer))
         (part-append "\\maketitle" #\newline)))
     (with-part(body)
-      (part-append "\\setength{\\locallinewidth}{\\linewidth}" #\newline)
+      (part-append "\\setlength{\\locallinewidth}{\\linewidth}" #\newline)
       (call-next-method)
 
       (when (and bibitems (setting :use-latex-citations (document writer)))
@@ -526,7 +471,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
 " "\\\\\\\\
 "))
       ((mode  :mbox-newline writer)
-       (let ((openings (jarw.string:join-strings (literal-block-stack writer)))
+       (let ((openings (join-strings (literal-block-stack writer)))
              (closings (make-string (length (literal-block-stack writer))
                                     :initial-element #\})))
          (replace-all "
@@ -562,7 +507,14 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
                            (encode ,writer (as-text ,node)))
                         `(attval ,writer (as-text ,node)))))
               ,(if (eql name 'author)
-                   `(push (list text) (author-stack ,writer))
+                   `(progn
+                      (push (list text) (author-stack ,writer))
+                      (setf (slot-value ,writer 'pdfauthor)
+                            (if (slot-value ,writer 'pdfauthor)
+                                (concatenate 'string
+                                             (slot-value ,writer 'pdfauthor)
+                                             ", " text)
+                                text)))
                    `(setf (first (author-stack ,writer))
                           (nconc (first (author-stack ,writer)) (list text))))))
           (date
@@ -634,6 +586,12 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
   (with-modes(writer :mathmode) (call-next-method))
   (part-append "}"))
 
+(defmethod visit-node((writer latex-writer) (node math))
+    (part-append (as-text (child node 0))))
+
+(defmethod visit-node((writer latex-writer) (node equation))
+  (part-append #\newline (as-text (child node 0)) #\newline))
+
 (defmethod visit-node((writer latex-writer) (node caption))
   (part-append "\\caption{")
   (call-next-method)
@@ -650,10 +608,11 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
             (slot-value writer 'bibitems))
       (progn
         (part-append
-         (format nil "\\begin{figure}[b]
-\\hypertarget{~A}" (attribute node :id)))
+         #\newline
+         (format nil "\\begin{figure}[b]~%\\hypertarget{~A}"
+                 (attribute node :id)))
         (call-next-method)
-        (part-append "\\end{figure}" #\newline #\newline))))
+        (part-append "\\end{figure}" #\newline))))
 
 (defmethod visit-node((writer latex-writer) (node citation-reference))
   (if (setting :use-latex-citations (document writer))
@@ -721,7 +680,26 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
     (part-append "
 \\end{tabularx}
 \\end{center}
-")))
+"))
+  (with-part(pdfinfo)
+    (when (slot-value writer 'pdfauthor)
+      (part-append (format nil "pdfauthor={~A}" (slot-value writer 'pdfauthor)))
+      (setf (slot-value writer 'pdfauthor) nil))
+    (when (slot-value writer 'pdfinfo)
+      (setf (slot-value writer 'pdfinfo)
+            (list (join-strings (nreverse (slot-value writer 'pdfinfo)) ", ")))
+      (part-prepend "\\hypersetup{")
+      (part-append "}" #\newline)))
+  (when (setting :use-latex-docinfo (document writer))
+    (with-part(head)
+      (part-append
+       (format nil "\\date{~A}~%" (slot-value writer 'date))
+       (format nil "\\author{~A}~%"
+               (join-strings
+                (mapcar
+                 #'(lambda(a) (join-strings a "\\\\"))
+                 (author-stack writer))
+                " \\and "))))))
 
 (defmethod visit-node((writer latex-writer) (node doctest-block))
   (part-append "\\begin{verbatim}" #\newline)
@@ -827,15 +805,20 @@ not supported in Latex"))
 
 (defmethod visit-node((writer latex-writer) (node field))
   (call-next-method)
-  (part-append #\newline))
+  (part-append "\\\\" #\newline))
 
 (defmethod visit-node((writer latex-writer) (node field-body))
-  (when (slot-value writer 'docinfo)
-    (with-part(docinfo)
-      (part-append
-       (format nil "~A \\\\~%" (as-text node)))))
-  (call-next-method)
-  (part-append #\newline))
+  (call-next-method))
+
+;;   (if (slot-value writer 'docinfo)
+;;       (with-part(docinfo)
+;;         (call-next-method)
+;;         (part-append "\\\\" #\newline))
+
+;;         (part-append
+;;          (format nil "~A \\\\" (as-text node))))
+;;       (call-next-method))
+;;   (part-append #\newline))
 
 (defmethod visit-node((writer latex-writer) (node field-list))
   (if (eql docutils::*current-writer-part* 'docinfo)
@@ -847,21 +830,16 @@ not supported in Latex"))
 
 (defmethod visit-node((writer latex-writer) (node field-name))
   (if (eql docutils::*current-writer-part* 'docinfo)
-      (part-append "\\textbf{~A}: & " (encode writer (as-text node)) #\newline)
+      (part-append (format nil "\\textbf{~A}: & " (encode writer (as-text node))))
       (progn
         (part-append "\\item[")
         (call-next-method)
         (part-append ":]"))))
 
 (defmethod visit-node((writer latex-writer) (node figure))
-  (part-append "\\begin{figure}[htbp]
-\\begin{center}")
+  (part-append #\newline "\\begin{figure}" #\newline "\\begin{center}")
   (call-next-method)
-  (part-append "
-\\end{center}
-\\end{figure}
-
-"))
+  (part-append "\\end{center}" #\newline "\\end{figure}" #\newline))
 
 (defmethod visit-node((writer latex-writer) (node footer))
   (with-part(footer)
@@ -878,8 +856,8 @@ not supported in Latex"))
         (call-next-method)
         (part-append "}" #\newline))
       (progn
-        (part-append
-         (format nil "\\begin{figure}[b]\\hypertarget{~s}"
+        (part-append #\newline
+         (format nil "\\begin{figure}[b]~%\\hypertarget{~s}"
                  (attribute node :id)))
         (call-next-method)
         (part-append "\\end{figure}" #\newline))))
@@ -1047,9 +1025,20 @@ not supported in Latex"))
   (part-append #\newline))
 
 (defmethod visit-node((writer latex-writer) (node problematic))
-  (part-append "\\color{red}\\bfseries{{}")
+  (part-append
+   (format nil "\\color{red}{\\bfseries{\\hyperlink{~A}{}[\\#~:*~A]} \\href{~A}{"
+           (attribute node :id)    (attribute node :refid) ))
   (call-next-method)
-  (part-append "}"))
+  (part-append "}}"))
+
+(defmethod visit-node((writer latex-writer) (node system-message))
+  (part-append
+   (format nil "\\color{red}{\\bfseries{\\hyperlink{~A}{}\\#~:*~A} "
+           (attribute node :id)))
+  (call-next-method)
+  (part-append
+   (format nil ". See: ~{\\href{~A}{\\#~:*~A} ~} }"
+           (backrefs node))))
 
 (defmethod visit-node((writer latex-writer) (node raw))
   (when (member :latex (attribute node :format))
@@ -1191,30 +1180,30 @@ not supported in Latex"))
 
 (defmethod visit-node((writer latex-writer) (node title))
   (let ((parent (parent node)))
-    (cond
-      ((typep parent 'topic)
+    (typecase parent
+      (topic
        (bookmark writer node)
        (part-append "\\subsubsection*{~\\hfill ")
        (call-next-method)
        (part-append "\\hfill ~}" #\newline))
-      ((or (typep parent 'sidebar) (typep parent 'admonition))
+      ((or sidebar admonition)
        (part-append "\\textbf{\\large ")
        (call-next-method)
        (part-append "}" #\newline "\\smallskip" #\newline))
-      ((typep parent 'table)
+      (table
        (setf (slot-value (active-table writer) 'caption)
              (encode writer (as-text node))))
-      ((zerop (length (section-numbers writer)))
+      (document
        ;; document title
        (let ((txt (encode writer (as-text node))))
          (setf (slot-value writer 'title) txt)
-         (with-part(pdfinfo)
-           (part-append (format nil "pdftitle={~A}" txt)))))
-      (t
+         (when (setting :use-latex-docinfo (document writer))
+           (with-part(head) (part-append (format nil "\\title{~A}~%" txt))))
+         (with-part(pdfinfo) (part-append (format nil "pdftitle={~A}" txt)))))
+      (otherwise
        (part-append "
 
 %---------------------------------------------------------------------------
-
 ")
        (bookmark writer node)
        (part-append (format nil "\\~A~:[~;*~]{"
