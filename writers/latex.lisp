@@ -468,7 +468,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
     (cond
       ((mode '(:insert-newline :literal-block) writer)
        (replace-all "
-" "\\\\\\\\
+" " \\\\\\\\
 "))
       ((mode  :mbox-newline writer)
        (let ((openings (join-strings (literal-block-stack writer)))
@@ -683,12 +683,11 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
 "))
   (with-part(pdfinfo)
     (when (slot-value writer 'pdfauthor)
-      (part-append (format nil "pdfauthor={~A}" (slot-value writer 'pdfauthor)))
+      (part-append (format nil "\\hypersetup{pdfauthor={~A}" (slot-value writer 'pdfauthor)))
       (setf (slot-value writer 'pdfauthor) nil))
     (when (slot-value writer 'pdfinfo)
       (setf (slot-value writer 'pdfinfo)
             (list (join-strings (nreverse (slot-value writer 'pdfinfo)) ", ")))
-      (part-prepend "\\hypersetup{")
       (part-append "}" #\newline)))
   (when (setting :use-latex-docinfo (document writer))
     (with-part(head)
@@ -1199,7 +1198,8 @@ not supported in Latex"))
          (setf (slot-value writer 'title) txt)
          (when (setting :use-latex-docinfo (document writer))
            (with-part(head) (part-append (format nil "\\title{~A}~%" txt))))
-         (with-part(pdfinfo) (part-append (format nil "pdftitle={~A}" txt)))))
+         (with-part(pdfinfo)
+           (part-append (format nil "\\hypersetup{pdftitle={~A}}~%" txt)))))
       (otherwise
        (part-append "
 
