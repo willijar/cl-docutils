@@ -525,22 +525,12 @@ children of ~A" child node))
 (defmethod initialize-instance :after ((document document)
 				       &key source-path &allow-other-keys)
   (when source-path
-    (setf (gethash :source-path (settings document)) source-path)))
+    (setf (setting :source-path document) source-path)))
 
 (defmethod parent((node document)) nil)
 (defmethod document((node document)) node)
 (defmethod language((node document))
   (or (attribute node :language) (setting :language node) *language*))
-
-(defgeneric setting(name entity)
-  (:documentation "Return the value of given setting for entity")
-  (:method((name symbol) (document document))
-    (gethash name (settings document))))
-
-(defgeneric (setf setting)(value key element)
-  (:documentation "Set a setting value for an entity")
-  (:method (value (name symbol) (document document))
-    (setf (gethash name (settings document)) value)))
 
 (defclass section(structural element)())
 (defclass topic(structural element)

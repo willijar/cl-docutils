@@ -340,7 +340,7 @@ resolve links to footnotes, citations, and their references."))
 
 (defmethod transform((transform footnotes))
   (let* ((document (document (node transform)))
-	 (startnum (or (setting :autofootnote-start document) 0)))
+         (startnum (or (setting :autofootnote-start document) 0)))
     (setf (setting :autofootnote-start document)
           (number-footnotes transform startnum ))
     (number-footnote-references transform)

@@ -62,7 +62,7 @@
   (:shadowing-import-from :cl #:warning #:error #:inline #:special)
   (:export
    ;; source interface
-   #:read-lines #:get-settings #:new-document
+   #:read-lines #:settings #:new-document
    ;; reader interface
    #:transforms #:reader
    #:*document* #:read-document #:*unknown-reference-resolvers*

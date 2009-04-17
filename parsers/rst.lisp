@@ -51,10 +51,11 @@
    (:trim-footnote-reference-space boolean t
     "Remove spaces before footnote references.")))
 
-(defmethod setting((name (eql :trim-footnote-reference-space))
-                   (entity hash-table))
-  (or (gethash name  entity)
-      (eql (setting :footnote-references entity) :superscript)))
+(defmethod setting((name (eql :trim-footnote-reference-space)) entity)
+  (multiple-value-bind(v v-p) (call-next-method)
+    (if v-p
+        (values v v-p)
+        (values (eql (setting :footnote-references entity) :superscript) nil))))
 
 (defmethod read-document(source (reader rst-reader))
   (let ((state-machine (make-instance 'rst-state-machine)))

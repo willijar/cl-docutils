@@ -21,17 +21,17 @@ number is bumped whenever there is a significant project release.  The major
 number will be bumped when the project is feature-complete, and perhaps if
 there is a major change in the design.")
 
-(defgeneric get-settings(source)
-  (:documentation "Return the settings has for this source"))
+(defgeneric settings(source)
+  (:documentation "Return the settings for an entity source"))
 
 (defgeneric new-document(source)
   (:documentation "Create and return a new empty document tree (root node).")
   (:method(source)
-    (make-instance 'docutils.nodes:document :settings (get-settings nil)))
+    (make-instance 'docutils.nodes:document :settings (settings nil)))
   (:method((source pathname))
     (make-instance 'docutils.nodes:document
                    :source-path source
-                   :settings (get-settings source))))
+                   :settings (settings source))))
 
 (defgeneric read-document(source reader)
   (:documentation "Create and read a new document using reader from source"))
@@ -107,7 +107,9 @@ applied after parsing"))
 ;;; -------------------------------------------------
 
 (defclass reader()
-  ()
+  ((settings
+    :initform nil :initarg :settings :type list
+    :documentation "a-list of overwriding reading and parsing settings"))
   (:documentation "Base classes to produce a document from input"))
 
 (defvar *pending-transforms* nil)
@@ -117,6 +119,10 @@ applied after parsing"))
 (defmethod read-document :around (source (reader reader))
   (let ((*pending-transforms* (transforms reader))
         (*document* (new-document source)))
+    ;; we copy reader/parser options into document settings
+    ;; so they provide a permanent record for a particular document
+    (dolist(setting (slot-value reader 'settings))
+      (setf (setting (first setting) *document*) (rest setting)))
     (setq cl-user::*document* *document*) ;; for debugging purposes
     (call-next-method)
     (do-transforms *pending-transforms* *document*)
@@ -180,34 +186,26 @@ applied after parsing"))
           :documentation "List of slot names for component parts in
 the output. The writer should accumulate strings on each part using
 push.")
-   (document :initform nil :reader document
-             :documentation "The current document"))
+   (settings :initarg :settings
+             :type list :initform nil :reader settings
+             :documentation "Overwritten setting affecting document writing"))
   (:documentation "Base Class for writing a document"))
 
 (defmethod write-document  ((writer writer) document (os stream))
-  (setf (document writer) document)
-  (dolist(part (parts writer))
-    (write-part writer (if (symbolp part) part (car part)) os)))
-
-(defmethod write-part((writer writer) (part symbol) (os stream))
-  (dolist(s (slot-value writer part))
-    (etypecase s
-      (string (write-string s os))
-      (character (write-char s os)))))
-
-(defmethod (setf document)(document (writer writer))
-  "Sets current document - updating writer parts if need be"
-  (unless (and (slot-boundp writer 'document)
-               (eql (slot-value  writer 'document) document))
-    (setf (slot-value  writer 'document) document)
+  (let ((*document* document))
     (dolist(part (parts writer))
       (if (symbolp part)
           (setf (slot-value writer part) nil)
           (setf (slot-value writer (car part)) (reverse (cdr part)))))
     (visit-node writer document)
     (dolist(part (parts writer))
-      (let ((part (if (symbolp part) part (car part))))
-        (setf (slot-value writer part) (nreverse (slot-value writer part)))))))
+      (write-part writer (if (symbolp part) part (car part)) os))))
+
+(defmethod write-part((writer writer) (part symbol) (os stream))
+  (dolist(s (nreverse (slot-value writer part)))
+    (etypecase s
+      (string (write-string s os))
+      (character (write-char s os)))))
 
 (defgeneric supports-format(writer format)
   (:documentation "Returns true if given writer supports a specific format"))
@@ -263,76 +261,82 @@ process further children"
   "List of standard docutils configuration files")
 
 (defvar *config-files-read* nil "List of configuration files already read.")
-(defvar *settings-spec* nil "List of configuration parameters")
+(defvar *settings-spec* (make-hash-table) "Hash of of configuration parameters")
+
+(defgeneric setting(name entity)
+  (:documentation "Return the value of given setting for entity")
+  (:method((name symbol) (hash hash-table)) (gethash name hash))
+  (:method((name symbol) (list list))
+    (let ((a (assoc name list)))
+      (if a (values (cdr a) t) (values nil nil))))
+  (:method((name symbol) (document document))
+    (multiple-value-bind(v v-p) (setting name (settings document))
+      (values (if v-p v (second (gethash name *settings-spec*))) v-p)))
+  (:method((name symbol) (entity null))
+    (second (gethash name *settings-spec*)))
+  (:method((name symbol) (node node))
+    (setting name (document node)))
+  (:method((name symbol) (writer writer))
+    (multiple-value-bind(v v-p) (setting name (settings writer))
+      (if v-p
+          (values v v-p)
+          (setting name *document*)))))
+
+(defgeneric (setf setting)(value key element)
+  (:documentation "Set a setting value for an entity")
+  (:method(value (name symbol) (hash hash-table))
+    (setf (gethash name hash) value))
+  (:method (value (name symbol) (document document))
+    (setf (setting name (settings document)) value)))
+
 
 (defun register-settings-spec(new-spec)
   (dolist(item new-spec)
-    (let ((old (assoc item *settings-spec*)))
-      (if old
-          (rplacd old (cdr new-spec))
-          (push item *settings-spec*)))))
+    (setf (gethash (first item) *settings-spec*) (rest item))))
 
-(defmethod get-settings((document-path pathname))
-  (let ((*standard-config-files*
-         (cons (merge-pathnames "cl-docutils.conf" document-path)
-               *standard-config-files*)))
-    (call-next-method)))
-
-(defmethod get-settings(entity)
-  "Update document settings a settings spec"
-  (declare (ignore entity))
+(defmethod settings((document-path pathname))
   (let ((settings (make-hash-table))
-        (*config-files-read* nil)
-        (specs *settings-spec*))
-    ;;; set defaults
-    (dolist(spec specs) (setf (gethash (first spec) settings) (third spec)))
-    ;; the override from config files
-    (dolist(fname *standard-config-files*)
-      (merge-settings settings (read-settings fname specs)))
+        (*config-files-read* nil))
+    (dolist(fname
+             (cons (merge-pathnames #p"cl-docutils.conf" document-path)
+                   *standard-config-files*))
+       (read-settings fname settings))
     settings))
 
-(defun merge-settings(destination newsettings)
-  (maphash #'(lambda(k v) (setf (gethash k destination) v))
-           newsettings))
-
-(defun read-settings(fname specs)
-  (unless (member fname *config-files-read* :test #'equal)
-    (let ((settings (make-hash-table)))
-      (when (probe-file fname)
-        (with-open-file(is fname :direction :input)
-          (push fname *config-files-read*)
-          (do((line (read-line is nil) (read-line is nil)))
-             ((not line))
-            (when (and (> (length line) 1) (not (line-blank-p line))
-                       (not (char= (char line 0) #\#)))
-              (let ((p (position #\: line)))
-                (if p
-                    (let* ((name (intern
-                                  (string-upcase (strip (subseq line 0 p)))
-                                  :keyword))
-                           (value (if (< p (1- (length line)))
-                                      (lstrip (subseq line (1+ p)))
-                                      ""))
-                           (spec (assoc name specs)))
-                      (if (eql name :config)
-                          (merge-settings
-                           settings
-                           (read-settings (pathname (strip value)) specs))
-                          (setf (gethash name settings)
-                                (if spec
-                                    (restart-case
-                                        (jarw.parse:parse-input
-                                         (second spec)  value)
-                                      (use-value(&optional (value (third spec)))
-                                        :report (lambda(s)
-                                                  (format
-                                                   s "Use value <~A> for ~S"
-                                                   value name))
-                                        value))
-                                    value))))
-                    (warn "~S is not a valid specification line in <~A>"
-                          line fname)))))))
-      settings)))
+(defun read-settings(fname &optional (settings (make-hash-table)))
+  (when (and (not (member fname *config-files-read* :test #'equal))
+             (probe-file fname))
+    (push fname *config-files-read*)
+    (with-open-file(is fname :direction :input)
+      (do((line (read-line is nil) (read-line is nil)))
+         ((not line))
+        (when (and (> (length line) 1) (not (line-blank-p line))
+                   (not (char= (char line 0) #\#)))
+          (let ((p (position #\: line)))
+            (if p
+                (let* ((name (intern
+                              (string-upcase (strip (subseq line 0 p)))
+                              :keyword))
+                       (value (if (< p (1- (length line)))
+                                  (lstrip (subseq line (1+ p)))
+                                  ""))
+                       (spec (gethash name *settings-spec*)))
+                  (if (eql name :config)
+                      (read-settings (pathname (strip value)) settings)
+                      (setf (gethash name settings)
+                            (if spec
+                                (restart-case
+                                    (jarw.parse:parse-input (first spec) value)
+                                  (use-value(&optional (value (third spec)))
+                                    :report (lambda(s)
+                                              (format
+                                               s "Use value <~A> for ~S"
+                                               value name))
+                                    value))
+                                value))))
+                (warn "~S is not a valid specification line in <~A>"
+                      line fname)))))))
+  settings)
 
 (register-settings-spec ;; base settings spec
  `((:generator

@@ -325,21 +325,21 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
             active-table (make-instance
                           'latex-table
                           :latex-type "longtable"
-                          :table-style (setting :table-style document)))
+                          :table-style (setting :table-style writer)))
     (with-part(head-prefix)
       (part-prepend
        (format nil "\\documentclass[~A~@[,~A~]]{~A}~%"
-               (setting :latex-document-options document)
+               (setting :latex-document-options writer)
                (babel *language*)
-               (setting :latex-document-class document)))
+               (setting :latex-document-class writer)))
       (part-append (used-packages (active-table writer)) #\newline)
       (part-append
-       (let ((color (setting :hyperlink-color document)))
+       (let ((color (setting :hyperlink-color writer)))
          (if color
              (format nil "\\usepackage[colorlinks=true,linkcolor=~A,urlcolor=~:*~A]{hyperref}" color)
              "\\usepackage[colorlinks=false]{hyperref}"))
        #\newline)
-      (let ((enc (setting :latex-font-encoding document)))
+      (let ((enc (setting :latex-font-encoding writer)))
         (part-append
          (cond
            ((equal enc "OT1") "")
@@ -348,7 +348,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
            (t (format nil "\\usepackage[~A]{fontenc}" enc)))
          #\newline))
       (part-append
-       (case (setting :graphicx-option document)
+       (case (setting :graphicx-option writer)
          ('nil "\\usepackage{graphicx}")
          (:auto "'%Check if we are compiling under latex or pdflatex
 \\ifx\\pdftexversion\\undefined
@@ -357,24 +357,24 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
   \\usepackage[pdftex]{graphicx}
 \\fi")
          (t (format nil "\\usepackage[~A]{graphicx}"
-                    (string-downcase (setting :graphicx-option document)))))
+                    (string-downcase (setting :graphicx-option writer)))))
        #\newline)
       (part-append "\\input{docutils.tex}" #\newline)
-      (when-bind (stylesheet (setting :latex-stylesheet document))
+      (when-bind (stylesheet (setting :latex-stylesheet writer))
         (part-append (format nil "\\input{~A}~%" stylesheet))))
     (setq *document* document)
-    (unless (setting :use-latex-docinfo document)
+    (unless (setting :use-latex-docinfo writer)
       (with-part(head)
         (part-append "\\author{}\\title{}" #\newline)))
     (with-part(body-prefix)
       (part-append #\newline "\\begin{document}" #\newline)
-      (when (setting :use-latex-docinfo (document writer))
+      (when (setting :use-latex-docinfo writer)
         (part-append "\\maketitle" #\newline)))
     (with-part(body)
       (part-append "\\setlength{\\locallinewidth}{\\linewidth}" #\newline)
       (call-next-method)
 
-      (when (and bibitems (setting :use-latex-citations (document writer)))
+      (when (and bibitems (setting :use-latex-citations writer))
         (let ((widest-label ""))
           (dolist(item bibitems)
             (when (> (length (first item)) (length widest-label))
@@ -452,7 +452,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
         (progn
           (setf separate-chars (concatenate 'string separate-chars ",`\'\"<>"))
           (setf string (double-quotes-in-tt string))
-          (if (equal (setting :font-encoding (document writer)) "OT1")
+          (if (equal (setting :font-encoding writer) "OT1")
               (progn
                 (replace-all "_" "{\\underline{ }}")
                 (replace-all "\\textbackslash" "\\reflectbox{/}"))
@@ -497,7 +497,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
 
 (defmacro visit-docinfo-item(writer node name)
   "Helper macro for docinfo items"
-  `(if (setting :use-latex-docinfo (document ,writer))
+  `(if (setting :use-latex-docinfo ,writer)
        ,(case name
           ((author organization contact address)
            ;; We attach these to the last author.  If any of them
@@ -567,7 +567,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
 
 (defmethod visit-node((writer latex-writer) (node bullet-list))
   (if (equal (slot-value writer 'topic-class) "contents")
-      (unless (setting :use-latex-toc (document writer))
+      (unless (setting :use-latex-toc writer)
         (part-append "\\begin{list}{}{}" #\newline)
         (call-next-method)
         (part-append "\\end{list}" #\newline))
@@ -603,7 +603,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
   (part-append "}"))
 
 (defmethod visit-node((writer latex-writer) (node citation))
-  (if (setting :use-latex-citations (document writer))
+  (if (setting :use-latex-citations writer)
       (push (nreverse (collect-parts (call-next-method)))
             (slot-value writer 'bibitems))
       (progn
@@ -615,7 +615,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
         (part-append "\\end{figure}" #\newline))))
 
 (defmethod visit-node((writer latex-writer) (node citation-reference))
-  (if (setting :use-latex-citations (document writer))
+  (if (setting :use-latex-citations writer)
       (progn
         (part-append "\\cite{")
         (call-next-method)
@@ -689,7 +689,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
       (setf (slot-value writer 'pdfinfo)
             (list (join-strings (nreverse (slot-value writer 'pdfinfo)) ", ")))
       (part-append "}" #\newline)))
-  (when (setting :use-latex-docinfo (document writer))
+  (when (setting :use-latex-docinfo writer)
     (with-part(head)
       (part-append
        (format nil "\\date{~A}~%" (slot-value writer 'date))
@@ -772,8 +772,8 @@ not supported in Latex"))
                               :upperalpha "Alph"
                               :lowerroman "roman"
                               :upperroman "Roman")))))
-    (when (setting :compound-enumerators (document writer))
-      (when (and (setting :section-prefix-for-numerators (document writer))
+    (when (setting :compound-enumerators writer)
+      (when (and (setting :section-prefix-for-numerators writer)
                  (section-numbers writer))
         (setf enum-prefix
               (concatenate 'string enum-prefix
@@ -825,7 +825,7 @@ not supported in Latex"))
       (progn
         (part-append "\\begin{quote}\\begin{description}" #\newline)
         (call-next-method)
-        (part-append "\\end{quote}\\end{description}" #\newline))))
+        (part-append "\\end{description}\\end{quote}" #\newline))))
 
 (defmethod visit-node((writer latex-writer) (node field-name))
   (if (eql docutils::*current-writer-part* 'docinfo)
@@ -838,6 +838,8 @@ not supported in Latex"))
 (defmethod visit-node((writer latex-writer) (node figure))
   (part-append #\newline "\\begin{figure}" #\newline "\\begin{center}")
   (call-next-method)
+  (format nil "\\label{~A}~%" (attribute node :id))
+
   (part-append "\\end{center}" #\newline "\\end{figure}" #\newline))
 
 (defmethod visit-node((writer latex-writer) (node footer))
@@ -847,7 +849,7 @@ not supported in Latex"))
     (part-append #\newline "\\end{center}" #\newline #\newline)))
 
 (defmethod visit-node((writer latex-writer) (node footnote))
-  (if (setting :use-latex-footnotes (document writer))
+  (if (setting :use-latex-footnotes writer)
       (progn
         (part-append
          "\\footnotetext[" (first (split-sequence #\space (as-text node)))
@@ -862,13 +864,13 @@ not supported in Latex"))
         (part-append "\\end{figure}" #\newline))))
 
 (defmethod visit-node((writer latex-writer) (node footnote-reference))
-  (if (setting :use-latex-footnotes (document writer))
+  (if (setting :use-latex-footnotes writer)
       (part-append "\\footnotemark[" (encode writer (as-text node)) "]")
       (let ((href (or (attribute node :refid)
                       (gethash (attribute node :refname)
                                (nameids (document writer))))))
         (multiple-value-bind(prefix suffix)
-            (ecase (setting :footnote-references (document writer))
+            (ecase (setting :footnote-references writer)
               (:brackets (values "[" "]"))
               (:superscript (values "\\raisebox{.5em}[0em]{\\scriptsize" "}")))
           (part-append prefix (format nil "\\hyperlink{~A}{" href))
@@ -878,16 +880,16 @@ not supported in Latex"))
 (defmethod visit-node((writer latex-writer) (node label))
   (etypecase (parent node)
     (footnote
-      (unless (setting :use-latex-footnotes (document writer))
+      (unless (setting :use-latex-footnotes writer)
         (multiple-value-bind(prefix suffix)
-            (ecase (setting :footnote-references (document writer))
+            (ecase (setting :footnote-references writer)
               (:brackets (values "[" "]"))
               (:superscript (values "$^{" "}$")))
           (part-append prefix)
           (call-next-method)
           (part-append suffix))))
     (citation
-     (unless (setting :use-latex-citations (document writer))
+     (unless (setting :use-latex-citations writer)
        (part-append "[")
        (call-next-method)
        (part-append "]")))))
@@ -902,7 +904,7 @@ not supported in Latex"))
   (push (attribute node :uri) (dependencies writer))
   (let ((pre nil)
         (post
-         (list (format nil "\\includegraphics{~A}" (attribute node :uri)))))
+         (list (format nil "\\includegraphics[clip=true]{~A}" (attribute node :uri)))))
     (when-bind(scale (attribute node :scale))
       (push (format nil "\\scalebox{~f}{" (/ scale 100.0)) pre)
       (push "}" post))
@@ -960,7 +962,7 @@ not supported in Latex"))
   (part-append "}"))
 
 (defmethod visit-node((writer latex-writer) (node literal-block))
-  (if (and (setting :use-verbatim-when-possible (document writer))
+  (if (and (setting :use-verbatim-when-possible writer)
            (= 1 (number-children node))
            (typep (child node 0) 'text))
       (progn
@@ -1171,7 +1173,7 @@ not supported in Latex"))
 (defun bookmark(writer node)
   (when-bind(id (attribute (parent node) :id))
     (part-append (format nil "\\hypertarget{~A}{}~%" id))
-    (unless (setting :use-latex-toc (document writer))
+    (unless (setting :use-latex-toc writer)
       (let ((l (length (section-numbers writer))))
         (when (> l 0) (decf l))
         (part-append (format nil "\\pdfbookmark[~d]{~s}{~s}~%"
@@ -1196,7 +1198,7 @@ not supported in Latex"))
        ;; document title
        (let ((txt (encode writer (as-text node))))
          (setf (slot-value writer 'title) txt)
-         (when (setting :use-latex-docinfo (document writer))
+         (when (setting :use-latex-docinfo writer)
            (with-part(head) (part-append (format nil "\\title{~A}~%" txt))))
          (with-part(pdfinfo)
            (part-append (format nil "\\hypersetup{pdftitle={~A}}~%" txt)))))
@@ -1208,12 +1210,12 @@ not supported in Latex"))
        (bookmark writer node)
        (part-append (format nil "\\~A~:[~;*~]{"
                             (section writer)
-                            (setting :use-latex-toc (document writer))))
+                            (setting :use-latex-toc writer)))
        (call-next-method)
        (part-append "}" #\newline)))))
 
 (defmethod visit-node((writer latex-writer) (node topic))
-  (if (setting :use-latex-toc (document writer))
+  (if (setting :use-latex-toc writer)
       (progn
         (setf (slot-value writer 'topic-class) nil)
         (part-append "\\tableofcontents" #\newline #\newline
