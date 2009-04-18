@@ -24,8 +24,9 @@
         (when header (add-child decoration header))
         (when footer (add-child decoration footer))
         (add-child document decoration
-                   (position-if
-                    #'(lambda(n)(not (typep n 'docutils.nodes::predecorative)))
+                   (position-if-not
+                    #'(lambda(n) (and (typep n 'docutils.nodes::predecorative)
+                                      (not (typep n 'docutils.nodes::target))))
                     (slot-value document 'docutils::children)))))))
 
 (defgeneric generate-header(transform)
