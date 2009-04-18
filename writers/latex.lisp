@@ -98,13 +98,13 @@
               slots values )))
   (defun open-table(table)
     (set-slots table
-               '(open col-specs caption attrs in-head preamble-written)
-               '(t  nil      nil     nil   nil nil)))
+               '(open col-specs caption in-head preamble-written)
+               '(t    nil      nil        nil   nil)))
 
   (defun close-table(table)
     (set-slots table
-               '(open colspecs caption attrs)
-               '(nil nil nil nil))))
+               '(open colspecs caption)
+               '(nil nil nil))))
 
 (defun used-packages(table)
   (if (equal (table-style table) "booktabs")
@@ -217,7 +217,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
 (defclass latex-writer(writer)
   ((document-class :initform "article" :initarg :document-class
                    :reader document-class)
-      (class-sections
+   (class-sections
     :reader class-sections
     :initform
     '(("book" "chapter" "section" "subsection" "subsubsection"
@@ -537,18 +537,11 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
   (visit-docinfo-item writer node address))
 
 (defmethod visit-node((writer latex-writer) (node admonition))
-  (with-part(body)
-    (part-append (format nil
-                         "\\begin{center}
-\\begin{sffamily}
-\\fbox{\\parbox{\\admonitionwidth}{\\textbf{\\large ~A}
-\\vspace{2mm}
-}}
-\\end{sffamily}
-\\end{center}
-"
-                         (translated-text (string-downcase (type-of node))
-                                          *language*)))))
+  (part-append (format nil "~%\\begin{admonition}{~A}~%"
+                       (translated-text (string-downcase (type-of node))
+                                        *language*)))
+  (call-next-method)
+  (part-append "\\end{admonition}" #\newline))
 
 ;; skip authors as author called for each one
 (defmethod visit-node((writer latex-writer) (node author))
@@ -824,9 +817,9 @@ not supported in Latex"))
   (if (eql docutils::*current-writer-part* 'docinfo)
       (call-next-method)
       (progn
-        (part-append "\\begin{quote}\\begin{description}" #\newline)
+        (part-append "\\begin{description}" #\newline)
         (call-next-method)
-        (part-append "\\end{description}\\end{quote}" #\newline))))
+        (part-append "\\end{description}" #\newline))))
 
 (defmethod visit-node((writer latex-writer) (node field-name))
   (if (eql docutils::*current-writer-part* 'docinfo)
