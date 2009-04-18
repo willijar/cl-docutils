@@ -215,9 +215,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
         (string-downcase (regex-replace-all "[-_]" encoding "")))))
 
 (defclass latex-writer(writer)
-  ((document-class :initform "article" :initarg :document-class
-                   :reader document-class)
-   (class-sections
+  ((class-sections
     :reader class-sections
     :initform
     '(("book" "chapter" "section" "subsection" "subsubsection"
@@ -312,7 +310,8 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
 (defun section(writer &optional (level (1- (length (section-numbers writer)))))
   "Return the section name at the given level for the specific
             document class."
-  (let ((sections (cdr (assoc (document-class writer) (class-sections writer)
+  (let ((sections (cdr (assoc (setting :latex-document-class writer)
+                              (class-sections writer)
                               :test #'string-equal))))
     (if (< level (length sections))
         (elt sections level)
@@ -797,8 +796,8 @@ not supported in Latex"))
   (pop (enumeration-counters writer)))
 
 (defmethod visit-node((writer latex-writer) (node field))
-  (call-next-method)
-  (part-append "\\\\" #\newline))
+  (part-append #\newline)
+  (call-next-method))
 
 (defmethod visit-node((writer latex-writer) (node field-body))
   (call-next-method))
@@ -827,7 +826,7 @@ not supported in Latex"))
       (progn
         (part-append "\\item[")
         (call-next-method)
-        (part-append ":]"))))
+        (part-append "]"))))
 
 (defmethod visit-node((writer latex-writer) (node figure))
   (let* ((width (when-bind(width (attribute node :width))
