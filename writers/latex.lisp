@@ -605,6 +605,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
          (format nil "\\begin{figure}[b]~%\\hypertarget{~A}"
                  (attribute node :id)))
         (call-next-method)
+        (bookmark writer node)
         (part-append "\\end{figure}" #\newline))))
 
 (defmethod visit-node((writer latex-writer) (node citation-reference))
@@ -834,7 +835,9 @@ not supported in Latex"))
          (env (if (and width (> width 50)) "figure*" "figure")))
     (part-append #\newline "\\begin{" env "}" #\newline "\\begin{center}")
     (call-next-method)
-    (format nil "\\label{~A}~%" (attribute node :id))
+    (let ((prev (prev-sibling node)))
+      (when (and (typep prev 'target) (attribute prev :id))
+        (part-append (format nil "\\label{~A}~%" (attribute prev :id)))))
     (part-append "\\end{center}" #\newline "\\end{" env "}" #\newline)))
 
 (defmethod visit-node((writer latex-writer) (node footer))
@@ -1046,22 +1049,27 @@ not supported in Latex"))
     (part-append (as-text node))))
 
 (defmethod visit-node((writer latex-writer) (node reference))
-  (let* ((hash-char "\\#"))
-    (part-append
-     (format nil "\\href{~A"
-             (cond
-               ((attribute node :refuri)
-                (regex-replace "#" (attribute node :refuri) hash-char))
-               ((attribute node :refid)
-                (concatenate 'string hash-char (attribute node :refid)))
-               ((attribute node :refname)
-                (concatenate 'string hash-char
-                             (gethash (attribute node :refname)
-                                      (nameids (document writer)))))
-               ((error "Unknown reference"))))))
-  (part-append "}{")
-  (call-next-method)
-  (part-append "}"))
+  (if (attribute node :refid)
+      (if (typep (gethash (attribute node :refid) (docutils:ids (document node))) 'docutils.nodes:section)
+          (progn
+            (call-next-method)
+            (part-append (format nil "~~(Section~~\\ref{~A})"
+                                 (attribute node :refid))))
+          (part-append (format nil "\\ref{~A})" (attribute node :refid))))
+      (let* ((hash-char "\\#"))
+        (part-append
+         (format nil "\\href{~A"
+                 (cond
+                   ((attribute node :refuri)
+                    (regex-replace "#" (attribute node :refuri) hash-char))
+                   ((attribute node :refname)
+                    (concatenate 'string hash-char
+                                 (gethash (attribute node :refname)
+                                          (nameids (document writer)))))
+                   ((error "Unknown reference")))))
+        (part-append "}{")
+        (call-next-method)
+        (part-append "}"))))
 
 (defmethod visit-node((writer latex-writer) (node revision))
   (visit-docinfo-item writer node revision))
@@ -1142,10 +1150,11 @@ not supported in Latex"))
           (attribute node :refid)
           (attribute node :refname))
       (call-next-method)
-      (progn
-        (part-append (format nil "\\hypertarget{~A}{" (attribute node :id)))
-        (call-next-method)
-        (part-append "}"))))
+      (unless (typep (next-sibling node) 'figure)
+        (progn
+          (part-append (format nil "\\hypertarget{~A}{" (attribute node :id)))
+          (call-next-method)
+          (part-append "}")))))
 
 (defun ensure-table-preamble(writer)
   (let ((table (active-table writer)))
@@ -1172,7 +1181,7 @@ not supported in Latex"))
 
 (defun bookmark(writer node)
   (when-bind(id (attribute (parent node) :id))
-    (part-append (format nil "\\hypertarget{~A}{}~%" id))
+    (part-append (format nil "\\label{~A}~%" id))
     (unless (setting :use-latex-toc writer)
       (let ((l (length (section-numbers writer))))
         (when (> l 0) (decf l))
@@ -1183,8 +1192,9 @@ not supported in Latex"))
   (let ((parent (parent node)))
     (typecase parent
       (topic
-       (bookmark writer node)
+
        (part-append "\\subsubsection*{~\\hfill ")
+       (bookmark writer node)
        (call-next-method)
        (part-append "\\hfill ~}" #\newline))
       ((or sidebar admonition)
@@ -1207,12 +1217,12 @@ not supported in Latex"))
 
 %---------------------------------------------------------------------------
 ")
-       (bookmark writer node)
        (part-append (format nil "\\~A~:[~;*~]{"
                             (section writer)
                             (setting :use-latex-toc writer)))
        (call-next-method)
-       (part-append "}" #\newline)))))
+       (part-append "}" #\newline)
+       (bookmark writer node)))))
 
 (defmethod visit-node((writer latex-writer) (node topic))
   (if (setting :use-latex-toc writer)
