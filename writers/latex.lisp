@@ -723,17 +723,17 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
     (if (= 1 (entry-number table))
         ;; if the firstrow is a multirow, this actually is the second row.
         ;; this gets hairy if rowspans follow each other.
-        (when (rowspan table 0)
+        (unless (zerop (rowspan table 0))
           (part-append " & ")
           (visit-entry table))
         (part-append " & "))
     (let ((morerows (attribute node :morerows))
           (morecols (attribute node :morecols)))
-      (when (and morerows morecols)
-        (error
+      (cond
+        ((and morerows morecols)
+         (error
          "Cells that span multiple rows and columns are
 not supported in Latex"))
-      (cond
         (morerows
          (let ((count (1+ morerows)))
            (setf (rowspan table (1- (entry-number table))) count)
@@ -755,7 +755,7 @@ not supported in Latex"))
     (call-next-method)
     (dolist(item (nreverse suffix)) (part-append item))
     ;;  if following row is spanned from above.
-    (when (rowspan table (entry-number table))
+    (unless (zerop (or (rowspan table (entry-number table)) 0))
       (part-append " & ")
       (visit-entry table))))
 
