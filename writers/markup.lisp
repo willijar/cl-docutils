@@ -30,9 +30,10 @@
     (declare (ignore attr))
     (when content
       (with-lock(mutex) ;; share state so lock
-        (setf (document *markup-rst-writer*)
-              (read-document (if (listp content) (car content) content)
-                             *markup-rst-reader*))
+        (docutils:visit-node
+         *markup-rst-writer*
+         (read-document (if (listp content) (car content) content)
+                        *markup-rst-reader*))
         (docutils:write-part *markup-rst-writer* 'body stream))))
   (defmethod html((stream stream) (document docutils.nodes:document)
                   &optional attr content)
