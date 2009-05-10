@@ -22,7 +22,8 @@ number will be bumped when the project is feature-complete, and perhaps if
 there is a major change in the design.")
 
 (defgeneric settings(source)
-  (:documentation "Return the settings for an entity source"))
+  (:documentation "Return the settings for an entity source")
+  (:method(source) (make-hash-table)))
 
 (defgeneric new-document(source)
   (:documentation "Create and return a new empty document tree (root node).")
