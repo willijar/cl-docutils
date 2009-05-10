@@ -103,7 +103,7 @@
 
   (defun close-table(table)
     (set-slots table
-               '(open colspecs caption)
+               '(open col-specs caption)
                '(nil nil nil))))
 
 (defun used-packages(table)
@@ -131,8 +131,8 @@
         (nconc (slot-value table 'col-specs)
                (list (attribute node :colwidth)))))
 
-(defun colspecs(table)
-  "Return colspecs for longtable"
+(defun col-specs(table)
+  "Return col-specs for longtable"
   (with-slots(col-specs col-width rowspan) table
     (let* ((width 80)
            (total-width
@@ -144,7 +144,7 @@
                          col-specs)
               rowspan (make-list (length col-specs) :initial-element 0))
         (let ((bar (vertical-bar table)))
-          (format nil "~{~Ap{\\~,2f\\localllinewidth}~}~A"
+          (format nil "~{~Ap{~,2f\\locallinewidth}~}~A"
                   (mapcan #'(lambda(w) (list bar w)) col-width)
                   bar))))))
 
@@ -246,6 +246,8 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
                     :documentation "Stack of nested section numbers")
    (enumeration-counters :initform nil :accessor enumeration-counters
                          :documentation "Stack of enumeration counters")
+   (max-enum-depth :initform 0 :accessor max-enum-depth
+                   :documentation "Maximum enumeration counter depth so far")
    (metadata :initform (make-hash-table) :reader metadata
              :documentation "docinfo metadata for Latex and pdfinfo")
    ;; parts of document filled in during translate
@@ -283,7 +285,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
 (defun mode(checklist writer)
   "Return true if writer is in any of the checklist modes"
   (if (listp checklist)
-      (union checklist (slot-value writer 'mode))
+      (intersection checklist (slot-value writer 'mode))
       (member checklist (slot-value writer 'mode))))
 
 ;; these are dependant on *language*
@@ -292,7 +294,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
         (quote-index 0))
     (flet ((next-quote()
              (prog1
-                 (aref quotes quote-index)
+                 (elt quotes quote-index)
                (setf quote-index (mod (1+ quote-index) 2)))))
       (with-output-to-string(os)
         (let ((parts (split-sequence #\" text)))
@@ -318,14 +320,19 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
         (car (last sections)))))
 
 (defmethod visit-node ((writer latex-writer) (document document))
-    (with-slots(mode section-numbers active-table bibitems) writer
+    (with-slots(mode section-numbers active-table bibitems max-enum-depth)
+        writer
       (setf section-numbers nil
             mode nil
             bibitems nil
-            active-table (make-instance
-                          'latex-table
-                          :latex-type "longtable"
-                          :table-style (setting :table-style writer)))
+            max-enum-depth 0
+            active-table
+            (make-instance
+             'latex-table
+             :latex-type
+             (if (search "twocolumn" (setting :latex-document-options writer))
+                 "tabular" "longtable")
+             :table-style (setting :table-style writer)))
     (with-part(head-prefix)
       (part-prepend
        (format nil "\\documentclass[~A~@[,~A~]]{~A}~%"
@@ -465,24 +472,24 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
          :for c :across separate-chars
          :do (replace-all (make-string 2 :initial-element c)
                           (format nil "~C{}~C" c c)))))
-    (cond
-      ((mode '(:insert-newline :literal-block) writer)
-       (replace-all "
+  (cond
+    ((mode '(:insert-newline :literal-block) writer)
+     (replace-all "
 " " \\\\\\\\
 "))
-      ((mode  :mbox-newline writer)
-       (let ((openings (join-strings (literal-block-stack writer)))
-             (closings (make-string (length (literal-block-stack writer))
-                                    :initial-element #\})))
-         (replace-all "
+    ((mode  :mbox-newline writer)
+     (let ((openings (join-strings (literal-block-stack writer)))
+           (closings (make-string (length (literal-block-stack writer))
+                                  :initial-element #\})))
+       (replace-all "
 "
-                      (format nil  "~s}\\\\
+                    (format nil  "~s}\\\\
 \\mbox{~s"
-                              closings
-                              openings)))))
-    (when (mode :insert-non-breaking-blanks writer)
-      (replace-all " " "~"))
-    string))
+                            closings
+                            openings)))))
+  (when (mode :insert-non-breaking-blanks writer)
+    (replace-all " " "~"))
+  string))
 
 (defun attval(writer string)
   (encode
@@ -586,9 +593,9 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
   (part-append #\newline (as-text (child node 0)) #\newline))
 
 (defmethod visit-node((writer latex-writer) (node caption))
-  (part-append "\\caption{")
-  (call-next-method)
-  (part-append "}"))
+    (part-append "\\caption{")
+    (call-next-method)
+    (part-append "}"))
 
 (defmethod visit-node((writer latex-writer) (node title-reference))
   (part-append "\\titlereference{")
@@ -758,40 +765,40 @@ not supported in Latex"))
   (part-append (depart-row (active-table writer))))
 
 (defmethod visit-node((writer latex-writer) (node enumerated-list))
-  (let ((enum-suffix (or (attribute node :suffix) ""))
+  (let ((enum-suffix (or (attribute node :suffix) "."))
         (enum-prefix (or (attribute node :prefix) ""))
-        (enum-type (or (get (or (attribute node :type) :arabic)
-                            '(:arabic "arabic"
-                              :loweralpha "alph"
-                              :upperalpha "Alph"
-                              :lowerroman "roman"
-                              :upperroman "Roman")))))
+        (enum-type
+         (get (attribute node :type)
+              '(:arabic "arabic" :loweralpha "alph" :upperalpha "Alph"
+                :lowerroman "roman" :upperroman "Roman")
+              "arabic")))
     (when (setting :compound-enumerators writer)
-      (when (and (setting :section-prefix-for-numerators writer)
+      (when (and (setting :section-prefix-for-enumerators writer)
                  (section-numbers writer))
         (setf enum-prefix
               (concatenate 'string enum-prefix
                            (format nil "~{~D.~}"
                                    (reverse (section-numbers writer))))))
-
       (setf enum-prefix
               (concatenate 'string enum-prefix
                            (format nil "~{~A.~}"
                                    (reverse (enumeration-counters writer))))))
-    (let ((counter-name
-           (format nil "listcnt~D"
-                   (1+ (length (enumeration-counters writer))))))
+    (let* ((n (1+ (length (enumeration-counters writer))))
+          (counter-name (format nil "listcnt~D" n)))
       (push (format nil "\\~A{~A}" enum-type counter-name)
             (enumeration-counters writer))
+      (when (> n (max-enum-depth writer))
+        (setf (max-enum-depth writer) n)
+        (part-append  (format nil "\\newcounter{~A}~%" counter-name)))
       (part-append
-       (format nil "\\newcounter{~A}~%\\begin{list}{~A\\~A{~A}~A}~%"
-               counter-name enum-prefix enum-type counter-name enum-suffix)
+       (format nil "\\begin{list}{~A\\~A{~A}~A}~%"
+               enum-prefix enum-type counter-name enum-suffix)
        (format nil "{~%\\usecounter{~A}~%" counter-name))
       (let ((start (attribute node :start)))
         (when start
-          (part-append (format nil "\\addtocounter{~A}{~D}~%"
+          (part-append (format nil "\\setcounter{~A}{~D}~%"
                                counter-name (1- start)))))
-      (part-append "\\setlength{\\rightmargin}{\\leftmargin}~%}~%")))
+      (part-append "\\setlength{\\rightmargin}{\\leftmargin}}" #\newline)))
   (call-next-method)
   (part-append "\\end{list}" #\newline)
   (pop (enumeration-counters writer)))
@@ -1136,6 +1143,11 @@ not supported in Latex"))
                    (encode writer (as-text node)))))))
 
 (defmethod visit-node((writer latex-writer) (node table))
+  (part-append #\newline "\\begin{table}" #\newline)
+  (call-next-method)
+  (part-append "\\end{table}" #\newline))
+
+(defmethod visit-node((writer latex-writer) (node tgroup))
   (let ((table (active-table writer)))
     (when (open-p table)
       (error "Nested tables are not supported"))
@@ -1160,7 +1172,7 @@ not supported in Latex"))
   (let ((table (active-table writer)))
     (unless (slot-value table 'preamble-written)
       (part-append
-       (format nil "{~A}~@[~A~]~%" (colspecs table) (caption table))
+       (format nil "{~A}~@[~A~]~%" (col-specs table) (caption table))
        (visit-thead table))
       (setf (slot-value table 'preamble-written) t))))
 
