@@ -29,17 +29,16 @@
                   &optional attr content)
     (declare (ignore attr))
     (when content
-      (with-lock(mutex) ;; share state so lock
-        (docutils:visit-node
-         *markup-rst-writer*
-         (read-document (if (listp content) (car content) content)
-                        *markup-rst-reader*))
-        (docutils:write-part *markup-rst-writer* 'body stream))))
+      (html stream
+            (with-lock(mutex) ;; share state so lock
+              (read-document (if (listp content) (car content) content)
+                             *markup-rst-reader*)))))
   (defmethod html((stream stream) (document docutils.nodes:document)
                   &optional attr content)
     (declare (ignore attr content))
-    (setf (document *markup-rst-writer*) document)
-    (docutils:write-document *markup-rst-writer* document stream))
+     (with-lock(mutex)
+       (docutils:visit-node *markup-rst-writer* document)
+       (docutils:write-part *markup-rst-writer* 'body stream)))
   (defmethod html(stream (node docutils.nodes:node) &optional attr content)
     (declare (ignore attr content))
     ;; we clone the document with settings - note parent of node will
@@ -48,8 +47,7 @@
                      'docutils.nodes:document
                      :settings (docutils::settings (document node)))))
       (setf (slot-value document 'docutils::children) (list node))
-      (setf (document *markup-rst-writer*) document)
-      (docutils:write-part *markup-rst-writer* 'body stream))))
+      (html stream document))))
 
 (defun markup::parse-restructured-text(text)
   `(markup::rst ,text))
