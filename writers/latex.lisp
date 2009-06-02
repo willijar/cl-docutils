@@ -42,7 +42,7 @@
    "Specify a stylesheet file, relative to the current working
    directory.  Overrides --stylesheet.")
    (:use-latex-toc boolean nil
-    "Table of contents by docutils (default) or latex. Latex (writer)
+    "Table of contents by docutils or latex  (default). Latex (writer)
     supports only one ToC per document, but docutils does not write
     pagenumbers.")
    (:use-latex-docinfo boolean nil
@@ -1196,7 +1196,7 @@ not supported in Latex"))
     (unless (setting :use-latex-toc writer)
       (let ((l (length (section-numbers writer))))
         (when (> l 0) (decf l))
-        (part-append (format nil "\\pdfbookmark[~d]{~s}{~s}~%"
+        (part-append (format nil "\\pdfbookmark[~d]{~A}{~A}~%"
                              l (encode writer (as-text node)) id))))))
 
 (defmethod visit-node((writer latex-writer) (node title))
@@ -1228,7 +1228,7 @@ not supported in Latex"))
 
 %---------------------------------------------------------------------------
 ")
-       (part-append (format nil "\\~A~:[~;*~]{"
+       (part-append (format nil "\\~A~:[*~;~]{"
                             (section writer)
                             (setting :use-latex-toc writer)))
        (call-next-method)
