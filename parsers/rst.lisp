@@ -132,10 +132,8 @@ content block and a callback to parse the content block")
                      (node  (error-node e))
                      (msg nil))
                 (setf (error-line e) line)
-                (when node
-                  (setf msg (make-node 'system-message e))
-                  (add-child node msg))
                 (when (>= severity report-severity)
+                  (when node (setf msg (make-node 'system-message e)))
                   (format *error-output*
                           "~A~@[ line ~A~] ~A~%" ;; and print
                           level line message ))

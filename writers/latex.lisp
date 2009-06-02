@@ -1037,19 +1037,18 @@ not supported in Latex"))
 
 (defmethod visit-node((writer latex-writer) (node problematic))
   (part-append
-   (format nil "\\color{red}{\\bfseries{\\hyperlink{~A}{}[\\#~:*~A]} \\href{~A}{"
+   (format nil "~%~%\\color{red}{\\bfseries{\\hyperlink{~A}[\\#~:*~A]} \\href{~A}{"
            (attribute node :id)    (attribute node :refid) ))
   (call-next-method)
   (part-append "}}"))
 
 (defmethod visit-node((writer latex-writer) (node system-message))
   (part-append
-   (format nil "\\color{red}{\\bfseries{\\hyperlink{~A}{}\\#~:*~A} "
+   (format nil "~%~%\\color{red}{\\bfseries{~@[\\hyperlink{~A}{}\\#~:*~A}~]"
            (attribute node :id)))
   (call-next-method)
   (part-append
-   (format nil ". See: ~{\\href{~A}{\\#~:*~A} ~} }"
-           (backrefs node))))
+   (format nil "~@[ See:~{ \\href{~A}{\\#~:*~A}~}~]}" (backrefs node))))
 
 (defmethod visit-node((writer latex-writer) (node raw))
   (when (member :latex (attribute node :format))
