@@ -194,10 +194,12 @@ Returns values:
        (subseq id (+ p (length *namespace-delimiter*))))
       (values nil id))))
 
-(defun make-name(name &key (char-transform #'char-downcase) (namespace *namespace*))
+(defun make-name(name &key
+                 (char-transform #'char-downcase)
+                 (namespace *namespace*))
   (let ((last-wsp-p 0))
     (with-output-to-string(os)
-      (when namespace
+      (when (and namespace (not (namespace name)))
         (write-string namespace os)
         (write-string *namespace-delimiter* os))
        (loop
