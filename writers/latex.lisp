@@ -11,10 +11,12 @@
   (:use :cl :docutils  :docutils.utilities  :docutils.nodes :cl-ppcre)
   (:shadowing-import-from :cl #:warning #:error #:inline #:special)
   (:import-from :jarw.media #:latex-length #:convert-length-unit)
-  (:import-from :jarw.lib #:when-bind #:is-prefix-p)
+  (:import-from :jarw.lib #:when-bind #:is-prefix-p #:while)
   (:import-from :jarw.string #:join-strings)
+  (:import-from :jarw.io #:wsp #:line-wrap-stream #:stream-write-char
+                #:last-char #:unwrite-char)
   (:import-from :split-sequence #:split-sequence)
-  (:export #:latex-writer))
+  (:export #:latex-writer #:latex-output-stream))
 
 (in-package :docutils.writer.latex)
 
@@ -1062,7 +1064,7 @@ not supported in Latex"))
             (call-next-method)
             (part-append (format nil "~~(Section~~\\ref{~A})"
                                  (attribute node :refid))))
-          (part-append (format nil "\\ref{~A})" (attribute node :refid))))
+          (part-append (format nil "~~\\ref{~A})" (attribute node :refid))))
       (let* ((hash-char "\\#"))
         (part-append
          (format nil "\\href{~A"
@@ -1280,6 +1282,20 @@ not supported in Latex"))
 
 (defmethod visit-node((writer latex-writer) (node version))
   (visit-docinfo-item writer node version))
+
+(defclass latex-output-stream(line-wrap-stream)
+  ()
+  (:documentation "Stream to help format latex out correctly - uses line wrapping, removes multiple spaces (including ~)"))
+
+(defmethod stream-write-char((stream latex-output-stream) (c character))
+  (cond
+    ((and (wsp c) (wsp (last-char stream)))
+     (return-from stream-write-char c))
+    ((or (eql c #\~) (eql c #\newline))
+     (while (wsp (last-char stream))
+       (unwrite-char stream))))
+  (call-next-method))
+
 #|
 
 testing
