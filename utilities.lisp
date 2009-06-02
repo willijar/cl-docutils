@@ -182,52 +182,60 @@ Returns values:
 		(setf (aref block idx) (subseq s (min indent (length s)))))))))
       (values block (or indent 0) blank-finish))))
 
+(defvar *namespace* nil "Prefix namespace for ids")
+(defvar *namespace-delimiter* "::" "Characters used as a delimiter for id namespace component")
+
+(defmethod namespace((id string))
+  "Return the namespace component of an id or nil if none. Returns other id component as second value"
+  (let ((p (search *namespace-delimiter* id)))
+    (if p
+      (values
+       (subseq id 0 p)
+       (subseq id (+ p (length *namespace-delimiter*))))
+      (values nil id))))
+
+(defun make-name(name &key (char-transform #'char-downcase) (namespace *namespace*))
+  (let ((last-wsp-p 0))
+    (with-output-to-string(os)
+      (when namespace
+        (write-string namespace os)
+        (write-string *namespace-delimiter* os))
+       (loop
+          :for c :across name
+          :do
+          (cond
+            ((wsp-char-p c) (unless (eql last-wsp-p 0) (setf last-wsp-p t)))
+            (t
+             (when (eql last-wsp-p t) (write-char #\space os))
+             (write-char (funcall char-transform c) os)
+             (setf last-wsp-p nil)))))))
+
 (defun whitespace-normalise-name(name)
   "Return and whitespace-normalized name."
-  (let ((last-wsp-p t))
-    (string-trim
-     +wsp+
-     (with-output-to-string(os)
-       (loop for c across name
-             do (setf last-wsp-p
-                      (cond
-                        ((wsp-char-p c)
-                         (unless last-wsp-p (write-char #\space os))
-                         t)
-                        (t (write-char c os) nil))))))))
+  (make-name name :char-transform #'identity :namespace nil))
 
 (defun normalise-name(name)
-  (let ((last-wsp-p t))
-    (string-trim
-     +wsp+
-     (with-output-to-string(os)
-       (loop for c across name
-             do (setf last-wsp-p
-                      (cond
-                        ((wsp-char-p c)
-                         (unless last-wsp-p (write-char #\space os))
-                         t)
-                        (t (write-char (char-downcase c) os) nil))))))))
+  (make-name name :char-transform #'char-downcase :namespace *namespace*))
 
 (defun make-id(string)
   "Make an ID from string that meets requirements of CSS and html 4.01"
-  (let ((start t)
-        (last--p nil))
-    (with-output-to-string(os)
+  (with-output-to-string(os)
+    (let ((start t)
+          (last--p nil))
       (loop
-       :for c :across string
-       :do
-       (cond
-         (start
-          (when (alpha-char-p c)
-            (setf start nil)
-            (write-char c os)))
-          ((alphanumericp c)
-           (write-char c os)
-           (setf last--p nil))
-          ((not last--p)
-           (write-char #\- os)
-           (setf last--p t)))))))
+         :for c :across string
+         :do
+         (cond
+           (start
+            (when (alpha-char-p c)
+              (setf start nil)
+              (write-char c os)))
+           ((alphanumericp c)
+            (write-char c os)
+            (setf last--p nil))
+           ((not last--p)
+            (write-char #\- os)
+            (setf last--p t)))))))
 
 (defgeneric read-lines(entity)
   (:documentation "Read and return a vector of lines from an entity

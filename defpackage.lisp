@@ -52,7 +52,7 @@
      #:indent-level #:line-length #:rstrip #:strip #:lstrip #:wsp-char-p
      #:canonical-text #:translated-text #:*language* #:author-separators
      #:read-lines #:translate-text #:canonical-text #:babel #:latex-quotes
-     #:latex-double-quote-replacement))
+     #:latex-double-quote-replacement #:namespace #:make-name #:*namespace*))
 
 (defpackage :docutils
   (:documentation "Document handling and structured text parsing")

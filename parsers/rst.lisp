@@ -1005,13 +1005,13 @@ parsed from an option marker match."
       "'_"))))
 
 (defun is-reference(reference)
-  (let ((reference (whitespace-normalise-name reference)))
-    (multiple-value-bind(start end starts ends)
-        (scan +explicit-reference-scanner+ reference)
-      (declare (ignore end))
-      (when start
-        (let ((group (if (aref starts 0) 0 1)))
-          (subseq reference (aref starts group) (aref ends group)))))))
+  (multiple-value-bind(start end starts ends)
+      (scan +explicit-reference-scanner+ reference)
+    (declare (ignore end))
+    (when start
+      (let ((group (if (aref starts 0) 0 1)))
+        (whitespace-normalise-name
+         (subseq reference (aref starts group) (aref ends group)))))))
 
 (defparameter +explicit-substitution-scanner+
   (create-scanner
@@ -2026,7 +2026,7 @@ as ordinary text because it's so short."
       (add-child section-node title-node)
       (add-child title-node (inline-text title 0))
       (setf (attribute section-node :name)
-            (normalise-name (as-text title-node)))
+            (make-name (as-text title-node) :namespace nil))
       section-node)))
 
 (defun insert-metadata(metadata parent-node)
@@ -2061,7 +2061,8 @@ as ordinary text because it's so short."
  (let ((docutils::*pending-transforms* (transforms reader))
        (*document* (new-document source)))
    (labels((read-as-subsection(source parent-node)
-             (let ((node (insert-subsection source parent-node (title source))))
+             (let* ((node (insert-subsection source parent-node (title source)))
+                    (*namespace* (attribute node :name)))
                (state-machine-run
                 (make-instance 'rst-state-machine)
                 (read-lines source)
