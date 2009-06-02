@@ -514,7 +514,7 @@ corresponding footnote references."
   (let ((refs (make-hash-table :test #'equal)))
     (with-nodes(node element)
       (when (typep node 'docutils.nodes:substitution-definition)
-        (let* ((name (normalise-name (attribute node :subname)))
+        (let* ((name (attribute node :subname))
               (oldnode (gethash name refs)))
           (when oldnode
             (report :error `("Duplicate substitution definition name: ~s" ,name)
@@ -529,7 +529,7 @@ corresponding footnote references."
   (let ((refs (make-hash-table :test #'equal)))
     (with-nodes(node element)
       (when (typep node 'docutils.nodes:substitution-reference)
-        (let ((name (normalise-name (attribute node :refname))))
+        (let ((name (attribute node :refname)))
           (push node (gethash name refs)))))
     refs))
 
