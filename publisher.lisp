@@ -128,7 +128,7 @@ applied after parsing"))
     (do-transforms *pending-transforms* *document*)
     *document*))
 
-(defun handle-transform-condition(e document messages)
+(defun handle-transform-condition(e document)
   "Deal with transform errors, adding system message to messages node"
   (let ((report-level (setting :report-level document))
         (halt-level  (setting :halt-level document))
@@ -141,8 +141,7 @@ applied after parsing"))
               (error-message e))
       (setf msg (make-node 'system-message e))
       (when (error-node e)
-        (add-backref msg (set-id (error-node e) document)))
-      (add-child messages msg))
+        (add-backref msg (set-id (error-node e) document))))
    (if (>= (error-severity e) halt-level)
         (error e)
         (invoke-restart 'system-message msg))))
@@ -155,27 +154,28 @@ applied after parsing"))
       ;; to the system message section
       (setf (slot-value messages 'parent) document)
       (add-child messages (make-node 'title "Docutils System Messages"))
-      (handler-bind
-          ((markup-condition
-            #'(lambda(e) (handle-transform-condition e document messages))))
-        (dolist(transform
-                 (sort (mapcar
-                        #'(lambda(transform)
-                            (etypecase transform
-                              (transform transform)
-                              (symbol
-                               (make-instance transform :node document))
-                              (function
-                               (make-instance
-                                'docutils.transform:simple-transform
-                                :function transform
-                                :node document))))
-                        transforms)
-                       #'transform-cmp))
-          (transform transform)))
-      (when (> (number-children messages) 1)
-        (setf (slot-value document 'children)
-              (nconc (slot-value document 'children) (list messages)))))))
+      (with-reports-to-node(messages)
+        (handler-bind
+            ((markup-condition
+              #'(lambda(e) (handle-transform-condition e document))))
+          (dolist(transform
+                   (sort (mapcar
+                          #'(lambda(transform)
+                              (etypecase transform
+                                (transform transform)
+                                (symbol
+                                 (make-instance transform :node document))
+                                (function
+                                 (make-instance
+                                  'docutils.transform:simple-transform
+                                  :function transform
+                                  :node document))))
+                          transforms)
+                         #'transform-cmp))
+            (transform transform)))
+        (when (> (number-children messages) 1)
+          (setf (slot-value document 'children)
+                (nconc (slot-value document 'children) (list messages))))))))
 
 
 ;;; -------------------------------------------------

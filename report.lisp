@@ -81,7 +81,9 @@ added by handler, it is returned using the system-message restart"
                          (apply #'format (cons nil message))
                          message)
             :node node)
-    (system-message(&optional system-message) system-message)))
+    (system-message(&optional system-message)
+      (when system-message (add-child node system-message))
+      system-message)))
 
 (defmacro with-reports-to-node((node) &body body)
   `(let ((*system-message-destination* ,node))
