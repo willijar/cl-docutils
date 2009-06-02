@@ -233,11 +233,10 @@ Returns values:
               (setf start nil)
               (write-char c os)))
            ((alphanumericp c)
+            (when last--p (write-char #\- os))
             (write-char c os)
             (setf last--p nil))
-           ((not last--p)
-            (write-char #\- os)
-            (setf last--p t)))))))
+           ((setf last--p t)))))))
 
 (defgeneric read-lines(entity)
   (:documentation "Read and return a vector of lines from an entity
