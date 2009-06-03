@@ -1040,7 +1040,7 @@ parsed from an option marker match."
           (multiple-value-bind(start end starts ends)
               (scan +explicit-substitution-scanner+ escaped)
             (when start
-              (setf subname (subseq escaped (aref starts 0) (aref ends 0)))
+              (setf subname (normalise-name (subseq escaped (aref starts 0) (aref ends 0))))
               (setf indented (subseq indented index))
               (setf (aref indented 0)
                     (subseq (concatenate 'string (strip (aref indented 0)) " ")
