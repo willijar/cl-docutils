@@ -219,7 +219,8 @@ The :start and :end keyword arguments have their usual meanings."
 
 (defun math(match  &rest attributes)
   (make-inline-nodes 'math attributes
-         (list (unescape (match-group match 0) :restore-backslashes t))))
+         (list (concatenate 'string "$" (unescape (match-group match 0)
+               :restore-backslashes t) "$"))))
 
 (defun literal(match &rest attributes)
    (make-inline-nodes 'literal attributes
