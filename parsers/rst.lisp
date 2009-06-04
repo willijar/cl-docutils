@@ -2024,7 +2024,7 @@ as ordinary text because it's so short."
       (add-child section-node title-node)
       (add-child title-node (inline-text title 0))
       (setf (attribute section-node :name)
-            (make-name (as-text title-node) :namespace nil))
+            (make-name (as-text title-node)))
       section-node)))
 
 (defun insert-metadata(metadata parent-node)
@@ -2055,12 +2055,19 @@ as ordinary text because it's so short."
   (:documentation "A reader which will recursively read from an entity
   and recurse down through subsections, reading them in turn"))
 
+(defmethod namespace((p pathname)) (pathname-name p))
+
 (defmethod read-document :around (source (reader recursive-rst-reader))
  (let ((docutils::*pending-transforms* (transforms reader))
        (*document* (new-document source)))
    (labels((read-as-subsection(source parent-node)
-             (let* ((node (insert-subsection source parent-node (title source)))
-                    (*namespace* (attribute node :name)))
+             (format t "Reading RST source ~S~%" source)
+             (let* ((node
+                     (let ((*namespace* nil))
+                       (insert-subsection source parent-node (title source))))
+                    (*namespace*
+                     (or (namespace source) (attribute node :name))))
+               (setf (attribute node :namespace) *namespace*)
                (state-machine-run
                 (make-instance 'rst-state-machine)
                 (read-lines source)
