@@ -156,11 +156,10 @@
             (elt col-width (1- cell-in-row)))))
 
 (defun visit-thead(table)
-  (let ((style (table-style table)))
-    (cond
-      ((equal style "booktabs") (values "\\toprule" "\\midrule\\endhead"))
-      ((equal style "standard") (values "\\hline" "\\endhead"))
-      (""))))
+  (case (table-style table)
+    (:booktabs (values "\\toprule" "\\midrule\\endhead"))
+    (:standard (values "\\hline" "\\hline"))
+    (t (values "" ""))))
 
 (defun visit-row(table)
   (setf (slot-value table 'cell-in-row) 0))
@@ -589,15 +588,28 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
   (part-append "}"))
 
 (defmethod visit-node((writer latex-writer) (node math))
-    (part-append (as-text (child node 0))))
+  (part-append (as-text (child node 0))))
 
 (defmethod visit-node((writer latex-writer) (node equation))
-  (part-append #\newline (as-text (child node 0)) #\newline))
+  (let ((prev (prev-sibling node))
+        (text (as-text (child node 0))))
+    (when (and (typep prev 'target) (attribute prev :id))
+      (multiple-value-bind(match regs)
+          (cl-ppcre::scan-to-strings
+           "\\\\begin\\{(.+)\\}((?m)(\\n|.)+)\\\\end{\\1\}" text)
+        (when match
+          (part-append
+           #\newline "\\begin{equation}"
+           (elt regs 1)
+           (format nil "\\label{~A}~%" (attribute prev :id))
+           "\\end{equation}" #\newline)
+          (return-from visit-node))))
+    (part-append #\newline text #\newline)))
 
 (defmethod visit-node((writer latex-writer) (node caption))
-    (part-append "\\caption{")
-    (call-next-method)
-    (part-append "}"))
+  (part-append "\\caption{")
+  (call-next-method)
+  (part-append "}"))
 
 (defmethod visit-node((writer latex-writer) (node title-reference))
   (part-append "\\titlereference{")
@@ -1119,7 +1131,7 @@ not supported in Latex"))
   (visit-docinfo-item writer node status))
 
 (defmethod visit-node((writer latex-writer) (node strong))
-  (let ((txt "\\texbf{"))
+  (let ((txt "\\textbf{"))
     (part-append txt)
     (push txt (literal-block-stack writer))
     (call-next-method)
@@ -1293,8 +1305,19 @@ not supported in Latex"))
      (return-from stream-write-char c))
     ((or (eql c #\~) (eql c #\newline))
      (while (wsp (last-char stream))
-       (unwrite-char stream))))
+       (unwrite-char stream)))
+    ((eql c #\")
+     (write-sequence
+      (if (alphanumericp (last-char stream)) "''" "``")
+      stream)
+     (return-from stream-write-char c)))
   (call-next-method))
+
+(defmethod write-document  ((writer latex-writer) document (os stream))
+  (let ((os (make-instance 'latex-output-stream :stream os)))
+    (unwind-protect
+         (call-next-method writer document os)
+      (close os))))
 
 #|
 
