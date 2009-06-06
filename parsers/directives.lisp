@@ -213,7 +213,7 @@ lambda-list::= ({var | (var [specializer])}*
       (if (eql (cdr v) :%) (/ (car v) 100.0) (car v)))))
 
 (defun make-image-nodes(uri alt height width scale align
-                        target class)
+                        target class angle)
   (let ((image-node (make-node 'image)))
     (when (find #\space uri)
       (report :error "Image URI contains whitespace"
@@ -223,8 +223,8 @@ lambda-list::= ({var | (var [specializer])}*
         (report :warning "Image should have an alt option"
                 :line *current-line-number*))
     (map nil #'(lambda(k v) (when v (setf (attribute image-node k) v)))
-         '(:height :width :scale :align :class)
-         (list height width scale align class))
+         '(:height :width :scale :align :class :angle)
+         (list height width scale align class angle))
     (setf (attribute image-node :uri) uri)
     (list
      (if target
@@ -245,11 +245,12 @@ lambda-list::= ({var | (var [specializer])}*
                             (width length)
                             (scale scale)
                             (align align)
+                            (angle (number :nil-allowed t))
                             target
                             (class class))
   (add-child
    parent
-   (make-image-nodes uri alt height width scale align target class)))
+   (make-image-nodes uri alt height width scale align target class angle)))
 
 (def-directive figure(parent uri
                              &option alt
@@ -259,6 +260,7 @@ lambda-list::= ({var | (var [specializer])}*
                              (align align)
                              target
                              (class class)
+                             (angle (number :nil-allowed t))
                              (figwidth length)
                              (figclass length)
                              &content content
@@ -271,7 +273,7 @@ lambda-list::= ({var | (var [specializer])}*
     (when align (setf (attribute figure-node :align) align))
     (add-child figure-node
                (make-image-nodes uri alt height width scale
-                                 "center" target class))
+                                 "center" target class angle))
     (when content
       (let ((node (make-node 'element))
             (legend nil)

@@ -52,6 +52,7 @@
      document info.")
    (:hyperlink-colour string "blue"
     "Color of any hyperlinks embedded in text")
+   (:print-hyperlink-url boolean t "If true urls are printed after the the hyperlink (for printed documents)")
    (:compound-enumerators  boolean nil
     "Enable compound enumerators for nested enumerated lists ")
    (:section-prefix-for-enumerators  boolean nil
@@ -924,7 +925,9 @@ not supported in Latex"))
   (let ((pre nil)
         (post
          (list
-          (format nil "\\includegraphics[clip=true~@[,scale=~A%~]~@[,width=~A~]~@[,height=~A~]]{~A}"
+          (format nil "\\includegraphics[clip=true~@[,angle=~A~]~@[,scale=~A%~]~@[,width=~A~]~@[,height=~A~]]{~A}"
+                  (when-bind(angle (attribute node :angle))
+                    angle)
                   (when-bind(scale (attribute node :scale))
                     (* 100 scale))
                   (when-bind(width (attribute node :width))
@@ -1178,15 +1181,22 @@ not supported in Latex"))
     (close-table table)))
 
 (defmethod visit-node((writer latex-writer) (node target))
-  (if (or (attribute node :refuri)
-          (attribute node :refid)
-          (attribute node :refname))
-      (call-next-method)
-      (unless (typep (next-sibling node) 'figure)
-        (progn
-          (part-append (format nil "\\hypertarget{~A}{" (attribute node :id)))
-          (call-next-method)
-          (part-append "}")))))
+  (cond
+    ((attribute node :refuri))
+    ((or (attribute node :refid)
+         (attribute node :refname))
+      (call-next-method))
+    (t
+     (typecase (next-sibling node)
+      (figure)
+      (equation)
+      (table)
+      (section)
+      (t
+       (progn
+         (part-append (format nil "\\hypertarget{~A}{" (attribute node :id)))
+         (call-next-method)
+         (part-append "}")))))))
 
 (defun ensure-table-preamble(writer)
   (let ((table (active-table writer)))
