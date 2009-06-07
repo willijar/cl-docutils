@@ -135,8 +135,8 @@ content block and a callback to parse the content block")
                 (when (>= severity report-severity)
                   (when node (setf msg (make-node 'system-message e)))
                   (format *error-output*
-                          "~A~@[ line ~A~] ~A~%" ;; and print
-                          level line message ))
+                          "~A~@[ line ~A~] ~@[~% ~A~%~]~A~%" ;; and print
+                          level line (docutils::error-source e) message ))
                 (if (>= severity halt-severity)
                     (error e)
                     (invoke-restart 'docutils.nodes:system-message msg))))))
@@ -2061,7 +2061,7 @@ as ordinary text because it's so short."
  (let ((docutils::*pending-transforms* (transforms reader))
        (*document* (new-document source)))
    (labels((read-as-subsection(source parent-node)
-             (format t "Reading RST source ~S~%" source)
+             (format t "%Reading ~S~%" source)
              (let* ((node
                      (let ((*namespace* nil))
                        (insert-subsection source parent-node (title source))))

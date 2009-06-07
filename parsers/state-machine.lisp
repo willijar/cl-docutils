@@ -27,8 +27,8 @@ machine and the new state object")
 		:initarg :line :reader error-line)
    (text-block :initarg :text-block :initform nil :reader error-text-block))
   (:report (lambda(c stream)
-	     (format stream "Unexpected indentation~@[ at line number ~D~]"
-		     (error-line c)))))
+	     (format stream "Unexpected indentation~@[ at line number ~D~]:~% ~S"
+		     (error-line c) (error-text-block c)))))
 
 (define-condition insert-lines(condition)
 	((text-block :initarg :text-block :initform nil :reader error-text-block)))
@@ -204,19 +204,19 @@ If `flush_left` is true, signal `UnexpectedIndentationError` if an
 indented line is encountered before the text block ends (with a blank
 line)."
   (let* ((input-lines (input-lines state-machine))
-	 (last (length input-lines))
-	 (text-block
-	  (subseq input-lines start
-		  (do((end start (1+ end)))
-		     ((>= end last) end)
-		    (let ((line (aref input-lines end)))
-		      (when (line-blank-p line) (return end))
-		      (when (and flush-left (char= (char line 0) #\space))
-			(next-line state-machine
-				   (1- (- end start))) ; go to last line
-			(signal 'unexpected-indentation
-				:line (1+ end)
-				:text-block (subseq input-lines start end))
+         (last (length input-lines))
+         (text-block
+          (subseq input-lines start
+                  (do((end start (1+ end)))
+                     ((>= end last) end)
+                    (let ((line (aref input-lines end)))
+                      (when (line-blank-p line) (return end))
+                      (when (and flush-left (char= (char line 0) #\space))
+                        (next-line state-machine
+                                   (1- (- end start))) ; go to last line
+                        (signal 'unexpected-indentation
+                                :line (1+ end)
+                                :text-block (subseq input-lines start))
 			(return (1- end))))))))
     (next-line state-machine (1- (length text-block)))
     text-block))
