@@ -122,6 +122,7 @@ specified. Default is not to do this (as recommended).")
   (with-output-to-string(os)
     (loop for c across string
           do (case c
+               (#\~ (write-string "&nbsp;" os))
                (#\& (write-string "&amp;" os))
                (#\< (write-string "&lt;" os))
                (#\> (write-string "&gt;" os))
