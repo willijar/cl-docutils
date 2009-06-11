@@ -92,10 +92,12 @@ specified (default)"))
 
 (defmethod print-object((node node) stream)
   (print-unreadable-object (node stream :type t :identity t)
-    (format stream "~@[line ~D ~]"
-	    (line node))))
+    (format stream "~@[line ~D ~]"  (line node))))
 
 (defmethod document((node node)) (or *document* (document (parent node))))
+
+(defmethod namespace((node node))
+  (or (attribute node :namespace) (namespace (parent node))))
 
 (defmethod language((node node)) (language (parent node)))
 
@@ -166,6 +168,7 @@ child nodes."))
 	    (line node)
 	    (> (number-children node) 0)
 	    (number-children node))))
+
 
 (defmethod make-node ((node element) &rest contents)
   (do((item (pop contents) (pop contents)))
@@ -598,6 +601,16 @@ outside of the flow of the document's main text."))
     (typecase child
       (field-name (evenp index))
       (field-body (oddp index)))))
+
+(defmethod print-object((node field-name) stream)
+  (print-unreadable-object (node stream :type t :identity t)
+    (format stream "~S ~@[line ~D ~]"  (as-text node) (line node))))
+
+(defmethod print-object((node field) stream)
+  (print-unreadable-object (node stream :type t :identity t)
+        (format stream "~S ~@[line ~D ~]"
+                (when (child node 0) (as-text (child node 0)))
+                (line node))))
 
 (defclass option(part element)())
 
