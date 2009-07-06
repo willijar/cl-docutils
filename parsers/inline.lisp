@@ -321,4 +321,3 @@ The :start and :end keyword arguments have their usual meanings."
                   unescaped)))
     (list (docutils:make-node 'docutils.nodes:reference :refuri uri unescaped))))
 
-(defvar *it* "Some *text* to test **inlining** out on. How about **nested *strong* studff**")
