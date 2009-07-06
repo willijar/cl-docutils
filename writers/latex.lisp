@@ -110,12 +110,12 @@
                '(nil nil nil))))
 
 (defun used-packages(table)
-  (if (equal (table-style table) "booktabs")
+  (if (eql (table-style table) :booktabs)
       "\\usepackage{booktabs}"
       ""))
 
 (defun vertical-bar(table)
-  (if (equal (table-style table) "standard") "|" ""))
+  (if (eql (table-style table) :standard) "|" ""))
 
 (defun opening(table)
   (format nil "\\begin{~A}[c]~%" (latex-type table)))
@@ -124,8 +124,8 @@
   (let ((style (table-style table)))
     (format nil "~A\\end{~A}"
           (cond
-            ((equal style "booktabs") "\\bottomrule")
-            ((equal style "standard") "\\hline")
+            ((equal style :booktabs) "\\bottomrule")
+            ((equal style :standard) "\\hline")
             (""))
           (latex-type table))))
 
@@ -137,11 +137,12 @@
 (defun col-specs(table)
   "Return col-specs for longtable"
   (with-slots(col-specs col-width rowspan) table
-    (let* ((width 80)
+    (let* ((width 60)
            (total-width
             (/ (+ (reduce #'+ col-specs) (length col-specs)) width)))
       (let ((factor 0.93))
         (when (> total-width 1) (setf factor (/ factor total-width)))
+
         (setf col-width (mapcar
                          #'(lambda(w) (+ (/ (* factor (1+ w)) width) 0.005))
                          col-specs)
@@ -171,10 +172,10 @@
     (format os " \\\\~%")
     (with-slots(rowspan) table
       (setf rowspan (mapcar #'(lambda(v) (if (> v 0) (1- v) v)) rowspan))
-      (when (equal (table-style table) "standard")
+      (when (eql (table-style table) :standard)
         (let ((rowspans nil))
           (do ((i 0 (1+ i)))
-              ((> i (length rowspan)))
+              ((>= i (length rowspan)))
             (when (<= (nth i rowspan) 0) (push (1- i) rowspans)))
           (if (= (length rowspan) (length rowspans))
               (format os "\\hline~%")
@@ -448,7 +449,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
                    (#\♥ ."heartsuit")  ;; hearts
                    (#\♦ . "diamondsuit");; diamonds
                    (#\♣ . "clubsuit")
-                   (#\~ ."textasciitilde"))
+                   #+nil(#\~ ."textasciitilde"))
                  "{\\" "}")
                 (char-replace
                  '((#\⇔ . "Leftrightarrow"))
@@ -639,7 +640,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
       (let ((href
              (or (attribute node :refid)
                  (gethash (attribute node :refname)
-                          (nameids (document writer))))))
+                          (nameids (document node))))))
         (part-append (format nil "[\\hyperlink{~A}{" href))
         (call-next-method)
         (part-append "}]"))))
@@ -888,7 +889,7 @@ not supported in Latex"))
       (part-append "\\footnotemark[" (encode writer (as-text node)) "]")
       (let ((href (or (attribute node :refid)
                       (gethash (attribute node :refname)
-                               (nameids (document writer))))))
+                               (nameids (document node))))))
         (multiple-value-bind(prefix suffix)
             (ecase (setting :footnote-references writer)
               (:brackets (values "[" "]"))
@@ -985,7 +986,7 @@ not supported in Latex"))
 
 (defmethod visit-node((writer latex-writer) (node literal))
   (part-append "\\texttt{")
-  (with-modes(:literal) (call-next-method))
+  (with-modes(writer :literal) (call-next-method))
   (part-append "}"))
 
 (defmethod visit-node((writer latex-writer) (node literal-block))
@@ -1089,7 +1090,7 @@ not supported in Latex"))
                    ((attribute node :refname)
                     (concatenate 'string hash-char
                                  (gethash (attribute node :refname)
-                                          (nameids (document writer)))))
+                                          (nameids (document node)))))
                    ((error "Unknown reference")))))
         (part-append "}{")
         (call-next-method)
