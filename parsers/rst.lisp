@@ -291,8 +291,8 @@ back up the calling chain until the correct section level is reached."
 (defun inline-text(text lineno)
   (parse-inline rst-patterns text :line lineno ))
 
-(defparameter grid-table-top-pattern "^\\+-[-+]+-\\+ *$")
-(defparameter simple-table-top-pattern  "^=+( +=+)+ *$")
+(defparameter grid-table-top-pattern (create-scanner "^\\+-[-+]+-\\+ *$"))
+(defparameter simple-table-top-pattern  (create-scanner "^=+( +=+)+ *$"))
 (defparameter +enumerated-lists+
   `((:arabic "[0-9]+"
      ,#'parse-integer

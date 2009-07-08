@@ -459,14 +459,19 @@ match. If n is not specified returns entire match"
     (- (aref (match-reg-ends match) n) (aref (match-reg-starts match) n))
     0))
 
+(defparameter *scan-cache* (make-hash-table))
+
 (defun match(pattern string &key (start 0) (end (length string)))
   (multiple-value-bind(start end reg-starts reg-ends)
       (typecase pattern
-	(function (funcall pattern string :start start :end end))
-	(t (scan pattern string :start start :end end)))
-  (when start
-    (make-match :string string :start start :end end
-		:reg-starts reg-starts :reg-ends reg-ends))))
+        (function (funcall pattern string :start start :end end))
+        (t (let ((scanner (or (gethash pattern *scan-cache*)
+                              (setf (gethash pattern *scan-cache*)
+                                    (cl-ppcre::create-scanner pattern)))))
+             (scan scanner string :start start :end end))))
+    (when start
+      (make-match :string string :start start :end end
+                  :reg-starts reg-starts :reg-ends reg-ends))))
 
 (defun matches(pattern string &key (start 0) (end (length string)))
   (let ((matches nil))

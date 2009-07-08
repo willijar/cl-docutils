@@ -111,8 +111,10 @@ markup elements to be inserted in place"))
      end-phrase-suffix))
 
 (defparameter rst-patterns
-  `(strong emphasis math interpreted literal internal-target
-    substitution-reference footnote-reference reference  uri))
+  (mapcar #'(lambda(pattern)
+              (cons pattern  pattern))
+          `(strong emphasis math interpreted literal internal-target
+                   substitution-reference footnote-reference reference  uri)))
 
 ;;; algorithm is for each pattern, scan through string collecting all matches
 ;;; order matches by start, and group by recursion. Remove overlapping patterns
