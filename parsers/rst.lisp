@@ -38,15 +38,7 @@
             docutils.transform:resolve-media)))
 
 (register-settings-spec
- '((:pep-references boolean t
-    "Recognize and link to standalone PEP references (like 'PEP 258').")
-   (:pep-base-url string "http://www.python.org/peps/"
-    "Base URL for PEP references ")
-   (:rfc-references boolean t
-    "Recognize and link to standalone RFC references (like 'RFC 822').")
-   (:rfc-url string "http://www.faqs.org/rfcs/"
-    "Base URL for RFC references")
-   (:tab-width integer 8
+ '((:tab-width integer 8
     "Set number of spaces for tab expansion")
    (:trim-footnote-reference-space boolean t
     "Remove spaces before footnote references.")))
@@ -291,8 +283,8 @@ back up the calling chain until the correct section level is reached."
 (defun inline-text(text lineno)
   (parse-inline rst-patterns text :line lineno ))
 
-(defparameter grid-table-top-pattern (create-scanner "^\\+-[-+]+-\\+ *$"))
-(defparameter simple-table-top-pattern  (create-scanner "^=+( +=+)+ *$"))
+(defparameter grid-table-top-pattern "^\\+-[-+]+-\\+ *$")
+(defparameter simple-table-top-pattern  "^=+( +=+)+ *$")
 (defparameter +enumerated-lists+
   `((:arabic "[0-9]+"
      ,#'parse-integer
