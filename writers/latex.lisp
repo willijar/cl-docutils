@@ -309,7 +309,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
 (defun double-quotes-in-tt(text)
   (let ((dqr (latex-double-quote-replacement *language*)))
     (if dqr
-        (regex-replace-all "\"" text dqr)
+        (regex-replace-all (load-time-value (create-scanner "\"") t) text dqr)
         text)))
 
 (defun section(writer &optional (level (1- (length (section-numbers writer)))))
@@ -407,92 +407,90 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
    $ starts math- mode.\\begin{thebibliography}{%s}
  AND quotes:"
   (when (mode :verbatim writer) (return-from encode string))
-  (flet((replace-all(regexp replacement)
-          (setf string (regex-replace-all regexp string replacement))))
+  (macrolet((replace-all(regexp replacement)
+              `(setf string (regex-replace-all (load-time-value (create-scanner ,regexp) t)
+                                                string ,replacement))))
   ;; first the braces
-  (replace-all "([\\{\\}])" "{\\\1}")
-  ;; then backslash except in form '{\{}' or '{\}}
-  (replace-all "(?<!{)(\\\\)(?![{}]})" "{\\textbackslash}")
+    (replace-all "([\\{\\}])" "{\\\\\\1}")
+    ;; then backslash except in form '{\{}' or '{\}}
+    (replace-all "(?<!{)(\\\\)(?![{}]})" "{\\textbackslash}")
   ;; do character replacements
-  (setf string
-        (with-output-to-string(os)
-          (loop
-             :for c :across string
-             :do
-             (flet ((char-replace(map prefix suffix)
-                      (let ((repl (cdr (assoc c map))))
-                        (when repl
-                          (write-string prefix os)
-                          (write-string repl os)
-                          (write-string suffix os)))))
-               (or
-                (unless (mode '(:literal-block :literal :mathmode) writer)
+    (setf string
+          (with-output-to-string(os)
+            (loop
+               :for c :across string
+               :do
+               (flet ((char-replace(map prefix suffix)
+                        (let ((repl (cdr (assoc c map))))
+                          (when repl
+                            (write-string prefix os)
+                            (write-string repl os)
+                            (write-string suffix os)))))
+                 (or
+                  (unless (mode '(:literal-block :literal :mathmode) writer)
+                    (char-replace
+                     '((#\| . "textbar")
+                       (#\< . "textless")
+                       (#\> . "textgreater"))
+                     "{\\" "}"))
                   (char-replace
-                   '((#\| . "textbar")
-                     (#\< . "textless")
-                     (#\> . "textgreater"))
-                   "{\\" "}"))
-                (char-replace
-                 '((#\$ ."$")
-                   (#\& . "&")
-                   (#\† . "dag")        ;; dagger
-                   (#\‡ . "ddag")
-                   ('\§ .q "S")          ;; section
-                   (#\  . "P")           ;; paragraph
-                   (#\¶ ."P")
-                   (#\^ ."textasciicircum")
-                   (#\% . "%")
-                   (#\# ."#")
-                   (#\® . "texttrademark")
-                   (#\© . "copyright")
-                   (#\♠ . "spadesuit") ;; spades
-                   (#\♥ ."heartsuit")  ;; hearts
-                   (#\♦ . "diamondsuit");; diamonds
-                   (#\♣ . "clubsuit")
-                   #+nil(#\~ ."textasciitilde"))
-                 "{\\" "}")
-                (char-replace
-                 '((#\⇔ . "Leftrightarrow"))
-                 "{\\ensuremathmode{\\" "}}")
-                (write-char c os))))))
-  ;; Separate compound characters, e.g. "--" to "-{}-".(The
-  ;; actual separation is done later; see below.)
-  (let ((separate-chars "-"))
-    (if (mode '(:literal-block :literal) writer)
-        (progn
-          (setf separate-chars (concatenate 'string separate-chars ",`\'\"<>"))
-          (setf string (double-quotes-in-tt string))
-          (if (equal (setting :font-encoding writer) "OT1")
-              (progn
-                (replace-all "_" "{\\underline{ }}")
-                (replace-all "\\textbackslash" "\\reflectbox{/}"))
-              (replace-all "_" "{\\_}")))
-        (progn
-          (setf string (quote-quotes string))
-          (replace-all "_" "{\\_}")))
-    (dotimes(x 2)
-      (loop
-         :for c :across separate-chars
-         :do (replace-all (make-string 2 :initial-element c)
-                          (format nil "~C{}~C" c c)))))
-  (cond
-    ((mode '(:insert-newline :literal-block) writer)
-     (replace-all "
+                   '((#\$ ."$")
+                     (#\& . "&")
+                     (#\† . "dag")        ;; dagger
+                     (#\‡ . "ddag")
+                     ('\§ .q "S")          ;; section
+                     (#\  . "P")           ;; paragraph
+                     (#\¶ ."P")
+                     (#\^ ."textasciicircum")
+                     (#\% . "%")
+                     (#\# ."#")
+                     (#\® . "texttrademark")
+                     (#\© . "copyright")
+                     (#\♠ . "spadesuit") ;; spades
+                     (#\♥ ."heartsuit")  ;; hearts
+                     (#\♦ . "diamondsuit");; diamonds
+                     (#\♣ . "clubsuit")
+                     #+nil(#\~ ."textasciitilde"))
+                   "{\\" "}")
+                  (char-replace
+                   '((#\⇔ . "Leftrightarrow"))
+                   "{\\ensuremathmode{\\" "}}")
+                  (write-char c os))))))
+    ;; Separate compound characters, e.g. "--" to "-{}-".(The
+    ;; actual separation is done later; see below.)
+    (let ((separate-chars (load-time-value (create-scanner "(-)-"))))
+      (if (mode '(:literal-block :literal) writer)
+          (progn
+            (setf separate-chars (load-time-value (create-scanner  "(-,`\'\"<>)\\1") t))
+            (setf string (double-quotes-in-tt string))
+            (if (equal (setting :font-encoding writer) "OT1")
+                (progn
+                  (replace-all "_" "{\\underline{ }}")
+                  (replace-all "\\textbackslash" "\\reflectbox{/}"))
+                (replace-all "_" "{\\_}")))
+          (progn
+            (setf string (quote-quotes string))
+            (replace-all "_" "{\\_}")))
+      (dotimes(x 2)
+        (setf string (regex-replace-all separate-chars string "\\1{}\\1"))))
+    (cond
+      ((mode '(:insert-newline :literal-block) writer)
+       (replace-all "
 " " \\\\\\\\
 "))
-    ((mode  :mbox-newline writer)
-     (let ((openings (join-strings (literal-block-stack writer)))
-           (closings (make-string (length (literal-block-stack writer))
-                                  :initial-element #\})))
-       (replace-all "
+      ((mode  :mbox-newline writer)
+       (let ((openings (join-strings (literal-block-stack writer)))
+             (closings (make-string (length (literal-block-stack writer))
+                                    :initial-element #\})))
+         (replace-all "
 "
-                    (format nil  "~s}\\\\
+                      (format nil  "~s}\\\\
 \\mbox{~s"
-                            closings
-                            openings)))))
-  (when (mode :insert-non-breaking-blanks writer)
-    (replace-all " " "~"))
-  string))
+                              closings
+                              openings)))))
+    (when (mode :insert-non-breaking-blanks writer)
+      (replace-all " " "~"))
+    string))
 
 (defun attval(writer string)
   (encode
@@ -546,7 +544,8 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
   (visit-docinfo-item writer node address))
 
 (defmethod visit-node((writer latex-writer) (node admonition))
-  (part-append (format nil "~%\\begin{admonition}{~A}~%"
+  (part-append (format nil "~%\\begin{admonition}~:[{~A}~;~]~%"
+                       (eql (type-of node) 'admonition)
                        (translated-text (string-downcase (type-of node))
                                         *language*)))
   (call-next-method)
@@ -1124,9 +1123,8 @@ not supported in Latex"))
                              :none ("" ""))))
 (defmethod visit-node((writer latex-writer) (node attribution))
   (multiple-value-bind(prefix suffix)
-      (values-list (get
-                    (or (attribute node :attribution) :parens)
-                    attribution-formats))
+      (values-list (getf attribution-formats
+                         (or (attribute node :attribution) :parens)))
     (part-append #\newline "\\begin{flushright}" #\newline prefix)
     (call-next-method)
     (part-append suffix #\newline "\\end{flushright}" #\newline))))
@@ -1235,15 +1233,14 @@ not supported in Latex"))
   (let ((parent (parent node)))
     (typecase parent
       (topic
-
        (part-append "\\subsubsection*{~\\hfill ")
        (bookmark writer node)
        (call-next-method)
        (part-append "\\hfill ~}" #\newline))
       ((or sidebar admonition)
-       (part-append "\\textbf{\\large ")
+       (part-append "{")
        (call-next-method)
-       (part-append "}" #\newline "\\smallskip" #\newline))
+       (part-append "}" #\newline))
       (table
        (setf (slot-value (active-table writer) 'caption)
              (encode writer (as-text node))))
@@ -1311,24 +1308,25 @@ not supported in Latex"))
   (:documentation "Stream to help format latex out correctly - uses line wrapping, removes multiple spaces (including ~)"))
 
 (defmethod stream-write-char((stream latex-output-stream) (c character))
-  (let ((lc (last-char stream)))
-    (cond
-      ((and (wsp c) lc (wsp lc))
-       (return-from stream-write-char c))
-      ((eql c #\~)
-       (when lc
-         (when (wsp lc)  (unwrite-char stream))
-         (when (digit-char-p lc)
-           (write-sequence "\\," stream)
-           (return-from stream-write-char c))))
-      ((eql c #\newline)
-       (do ((lc lc (last-char stream)))
-           ((not (and lc (wsp lc))))
-         (unwrite-char stream)))
-      ((eql c #\")
-       (write-sequence (if (alphanumericp lc) "''" "``") stream)
-       (return-from stream-write-char c))))
-  (call-next-method))
+  (case c
+    (#\“ (write-sequence "``" stream))
+    (#\” (write-sequence "''" stream))
+    (#\" (write-sequence
+          (if (alphanumericp (last-char stream)) "''" "``")
+          stream))
+    (#\newline
+     (do ((lc (last-char stream) (last-char stream)))
+         ((not (and lc (wsp lc))))
+       (unwrite-char stream))
+     (call-next-method))
+    (#\~
+     (when (wsp (last-char stream))  (unwrite-char stream))
+     (if (let ((lc (last-char stream))) (and lc (digit-char-p lc)))
+         (write-sequence "\\," stream)
+         (call-next-method)))
+    (t (unless (and (wsp c) (let ((lc (last-char stream))) (and lc (wsp lc))))
+         (call-next-method))))
+  c)
 
 (defmethod write-document  ((writer latex-writer) document (os stream))
   (let ((os (make-instance 'latex-output-stream :stream os)))
