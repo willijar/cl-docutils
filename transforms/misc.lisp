@@ -54,15 +54,19 @@
   ()
   (:documentation "eval evaluate nodes"))
 
-(defun evaluate(node)
-  (with-nodes(node node)
-    (when (typep node 'docutils.nodes:evaluate)
-      (handler-case
+(defgeneric evaluate(node)
+  (:documentation "Evaluate the node in current dynamic context")
+  (:method(node) node)
+  (:method((node docutils.nodes:element))
+    (with-children(child node) (evaluate child))
+    node)
+  (:method((node docutils.nodes:evaluate))
+    (handler-case
           (setf (slot-value node 'docutils::result)
                 (eval (slot-value node 'docutils::expr)))
          (error(e)
-           (report :warn (write-to-string e :escape nil :readably nil ) )))))
-  node)
+           (report :warn (write-to-string e :escape nil :readably nil ) )))
+    node))
 
 (defmethod transform((transform evaluate-transform))
   (evaluate (node transform)))
