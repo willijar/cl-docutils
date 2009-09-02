@@ -160,7 +160,6 @@ lambda-list::= ({var | (var [specializer])}*
         (funcall parser admonition))
       (report :error "The admonition is empty; content required.")))
 
-
 (defmethod parse-input((spec (eql 'align)) input &key &allow-other-keys)
   (if (member input '("top" "middle" "bottom" "left" "center" "right")
               :test #'string-equal)

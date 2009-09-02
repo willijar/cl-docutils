@@ -54,4 +54,5 @@
   (:import-from :split-sequence #:split-sequence)
   (:import-from :jarw.lib #:is-prefix-p #:is-suffix-p #:when-bind)
   (:import-from :jarw.media #:length-unit #:convert-length-unit)
-  (:export #:rst-reader #:def-directive #:def-role))
+  (:export #:rst-reader #:def-directive #:def-role #:&allow-spaces
+           #:&option #:&content #:&content-parser))

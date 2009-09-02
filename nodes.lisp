@@ -236,7 +236,8 @@ children in to-element"
   node)
 
 (defclass evaluate(text)
-  ((expr :initarg :expr :documentation "Text to be read and evaluated at some later time")
+  ((expr :initarg :expr :documentation "Text to be read and evaluated
+  at some later time")
    (result :documentation "Result obtained from  evaluating expr"))
   (:documentation "A node containing an expression to be evaluated"))
 
