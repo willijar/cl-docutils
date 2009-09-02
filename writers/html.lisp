@@ -337,7 +337,8 @@ specified. Default is not to do this (as recommended).")
 (defmethod visit-node((writer html-writer) (node comment))
   (part-append
    (format nil "<!-- ~A -->~%"
-	   (cl-ppcre:regex-replace-all "-(?=-)" (as-text node) "- "))))
+	   (cl-ppcre:regex-replace-all (load-time-value (cl-ppcre::create-scanner "-(?=-)"))
+                                 (as-text node) "- "))))
 
 (defmethod visit-node((writer html-writer) (node compound))
   (let ((n (number-children node)))
@@ -1063,5 +1064,5 @@ specified. Default is not to do this (as recommended).")
   (add-docinfo-item(writer node "Version" :meta nil)
                    (call-next-method)))
 
-(defmethod visit-node :around ((writer writer) (node docutils.nodes:evaluate))
+(defmethod visit-node ((writer writer) (node docutils.nodes:evaluate))
   (part-append (as-text node)))
