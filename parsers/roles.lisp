@@ -180,11 +180,12 @@ use the \'role\' directive to create a new role with an associated format")
   (handler-case
       (make-instance 'docutils.nodes:evaluate
                      :expr (with-input-from-string(is text)
-                             (let ((first (read is  t nil))
-                                   (second (read is nil nil)))
-                               (if second
-                                   `(format nil ,first ,second)
-                                   first))))
+                             (let ((*package* (find-package :markup)))
+                               (let ((first (read is  t nil))
+                                     (second (read is nil nil)))
+                                 (if second
+                                     `(format nil ,first ,second)
+                                     first)))))
     (error(e)
       (make-node 'problematic
                  (write-to-string e :escape nil :readably nil )))))
