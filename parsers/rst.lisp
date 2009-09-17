@@ -75,6 +75,23 @@
 arguments, an argument string, an a-list of options, an unparsed
 content block and a callback to parse the content block")
 
+(defgeneric get-directive(name directives)
+  (:documentation "Given a directive name and a directives entity
+  return the directive function. This is implemented as a generic
+  function so that the directives can be stored in a class 'shadowing'
+  the main rst directives hash.")
+  (:method(name (directives hash-table))
+    (gethash name directives)))
+
+(defgeneric (setf get-directive)(value name directives)
+  (:documentation "Given a directive name and a directives entity
+  return the directive function. This is implemented as a generic
+  function so that the directives can be stored in a class 'shadowing'
+  the main rst directives hash.")
+  (:method(value name (directives hash-table))
+    (setf (gethash name directives) value)))
+
+
 ;;;; Transition functions
 (defgeneric bullet(state match))
 (defgeneric list-item(state match))
@@ -1078,7 +1095,7 @@ parsed from an option marker match."
 (defun directive(state match)
   "A directive block"
   (let* ((type-name (match-group match 0))
-         (directive (get-dictionary (canonical-text type-name) *directives*))
+         (directive (get-directive (canonical-text type-name) *directives*))
          (lineno (abs-line-number (state-machine state)))
          (initial-line-offset (line-offset (state-machine state)))
          (*current-line-number* lineno))

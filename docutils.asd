@@ -6,15 +6,15 @@
 ;;;; $Id: docutils.asd,v 1.5 2007/07/14 08:13:26 willijar Exp $
 
 (in-package :asdf)
+
 (defsystem docutils
   :name "Docutils"
   :description "Document utilities and Restructured text parser"
   :author "Dr. John A.R. Williams"
   :version "0.0.1"
   :maintainer "Dr. John A.R. Williams"
-  :licence "GPL"
-  :depends-on (:cl-ppcre :jarw :split-sequence :dictionary :inet :markup
-                         :media)
+  :licence "GPL v3"
+  :depends-on (:cl-ppcre :jarw :split-sequence :media)
   :components
   ((:file "defpackage")
    (:file "nodes" :depends-on ("defpackage" "report" "utilities"
@@ -51,5 +51,4 @@
             :depends-on ("parsers")
             :components
             ((:file "html")
-             (:file "latex")
-             (:file "markup" :depends-on ("html"))))))
+             (:file "latex")))))

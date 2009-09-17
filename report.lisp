@@ -25,6 +25,9 @@
 ;; the output will contain severe errors. Typically severe system
 ;; messages are turned into exceptions which halt processing.
 
+(defvar *current-line-number* -1
+  "Current line number - used for line in node creation")
+
 (defparameter +error-levels+
   '(:debug 0 :info 2 :warning 4 :error 6 :severe 8 :terminal 10))
 

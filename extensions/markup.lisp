@@ -6,7 +6,7 @@
 
 ;;;; $Id: markup.lisp,v 1.3 2006/08/08 08:15:34 willijar Exp willijar $
 
-(in-package :cl)
+(in-package :asdf)
 
 (defpackage :docutils.writer.markup
   (:documentation "Latex writer for docutils")

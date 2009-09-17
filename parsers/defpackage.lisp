@@ -44,7 +44,6 @@
         :docutils.parser.tables)
   (:shadow #:make-node #:line)
   (:import-from :docutils #:add-transform)
-  (:import-from :dictionary #:get-dictionary)
   (:import-from :cl-ppcre #:create-scanner #:scan #:do-scans
                 #:define-parse-tree-synonym)
   (:import-from :jarw.parse #:invalid-input #:parse-input #:format-output

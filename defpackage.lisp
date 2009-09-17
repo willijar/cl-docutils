@@ -102,5 +102,5 @@
    #:doctitle #:docinfo #:substitutions #:chained-targets #:simple-transform
    #:anonymous-hyperlinks #:indirect-hyperlinks #:footnotes
    #:external-targets #:internal-targets #:fignum
-   #:evaluate #:evaluate-transform
+   #:evaluate #:evaluate-transform #:*evaluator*
    #:resolve-media))

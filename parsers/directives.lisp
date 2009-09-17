@@ -97,7 +97,7 @@ lambda-list::= ({var | (var [specializer])}*
             (options  (gensym))
             (goptions-var (or options-var (gensym)))
             (arguments (gensym)))
-        `(setf (get-dictionary ,(string-downcase name) *directives*)
+        `(setf (get-directive ,(string-downcase name) *directives*)
           (make-directive
            :name ,(string-downcase name)
            :arguments ',args-spec

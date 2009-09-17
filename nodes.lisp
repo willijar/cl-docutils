@@ -8,9 +8,6 @@
 
 (in-package :docutils)
 
-(defvar *current-line-number* -1
-  "Current line number - used for line in node creation")
-
 (defvar *document* nil
   "Document (root element) currently being operated on")
 
