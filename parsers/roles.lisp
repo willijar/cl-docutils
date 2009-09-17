@@ -18,6 +18,9 @@ the role function")
   "The canonical name of the default interpreted role. This role is used
 when no role is specified for a piece of interpreted text.")
 
+(defvar *default-reader-package* (find-package :common-lisp-user)
+  "The default package Lisp expressions in the document are to be read into")
+
 (defmethod parse-role((rolename string) text &optional option-values content)
   (let ((role (gethash
                (if (= 0 (length rolename))
@@ -180,7 +183,7 @@ use the \'role\' directive to create a new role with an associated format")
   (handler-case
       (make-instance 'docutils.nodes:evaluate
                      :expr (with-input-from-string(is text)
-                             (let ((*package* (find-package :markup)))
+                             (let ((*package* *default-reader-package*))
                                (let ((first (read is  t nil))
                                      (second (read is nil nil)))
                                  (if second

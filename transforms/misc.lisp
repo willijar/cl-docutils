@@ -20,6 +20,8 @@
 
 (in-package :docutils.transform)
 
+(defvar *evaluator* #'eval)
+
 (defclass class-attribute(transform)
   ()
   (:default-initargs :priority 210)
@@ -66,7 +68,7 @@
     node)
   (:method((node docutils.nodes:evaluate))
           (setf (slot-value node 'docutils::result)
-                (eval (slot-value node 'docutils::expr)))
+                (funcall *evaluator* (slot-value node 'docutils::expr)))
     node))
 
 (defmethod transform((transform evaluate-transform))
