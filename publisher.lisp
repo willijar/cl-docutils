@@ -21,9 +21,7 @@ number is bumped whenever there is a significant project release.  The major
 number will be bumped when the project is feature-complete, and perhaps if
 there is a major change in the design.")
 
-(defgeneric settings(source)
-  (:documentation "Return the settings for an entity source")
-  (:method(source) (make-hash-table)))
+(defmethod settings(source) (make-hash-table))
 
 (defgeneric new-document(source)
   (:documentation "Create and return a new empty document tree (root node).")
@@ -197,6 +195,9 @@ push.")
     (dolist(part (parts writer))
       (write-part writer (if (symbolp part) part (car part)) os)))
 
+(defmethod write-document(writer document (os (eql 'string)))
+  (with-output-to-string(os) (write-document writer document os)))
+
 (defmethod write-part((writer writer) (part symbol) (os stream))
   (dolist(s (nreverse (slot-value writer part)))
     (etypecase s
@@ -326,7 +327,7 @@ process further children"
                       (setf (gethash name settings)
                             (if spec
                                 (restart-case
-                                    (jarw.parse:parse-input (first spec) value)
+                                    (parse-input (first spec) value)
                                   (use-value(&optional (value (third spec)))
                                     :report (lambda(s)
                                               (format
@@ -380,7 +381,7 @@ cause a halt")
     '(pathname :nil-allowed t) nil
     "Write dependencies (caused e.g. by file inclusions) to <file>.")
    (:search-path
-    (jarw.parse::pathnames :nil-allowed t :wild-allowed t) nil
+    (pathnames :nil-allowed t :wild-allowed t) nil
     "Path to search for paths (after source path)")
    (:config
     '(pathname :nil-allowed t) nil
@@ -391,3 +392,13 @@ cause a halt")
    (:help
     boolean nil
     "Show help message and exit.")))
+
+(defgeneric resolve-dependancy(node uri)
+  (:documentation "Return full path corresponding to uri in a node")
+  (:method (node uri)
+    (let ((document (document node)))
+      (find-file uri
+                 :search-path
+                 `(,(setting :source-path document)
+                    ,(setting :search-path document)
+                    ,@docutils.utilities::*search-path*)))))

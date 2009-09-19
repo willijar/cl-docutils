@@ -72,7 +72,7 @@
               ((or docutils.nodes:citation-reference
                    docutils.nodes:footnote-reference))
               (docutils.nodes:image
-               (jarw.lib:when-bind(alt (attribute node :alt))
+               (when-bind(alt (attribute node :alt))
                  (add-child parent
                             (make-instance 'docutils.nodes:text :text alt))))
               ((or docutils.nodes:problematic

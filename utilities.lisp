@@ -118,7 +118,7 @@ trimmed text."
 
 (defun split-lines(string)
   "Return a vector of lines split from string"
-  (let ((lines (split-sequence #\newline string)))
+  (let ((lines (split-string string :delimiter #\newline)))
     (make-array (length lines)
                 :element-type 'string
                 :initial-contents lines)))
@@ -185,14 +185,15 @@ Returns values:
 (defvar *namespace* nil "Prefix namespace for ids")
 (defvar *namespace-delimiter* "::" "Characters used as a delimiter for id namespace component")
 
-(defmethod namespace((id string))
+(defgeneric namespace(id)
+  (:method((id string))
   "Return the namespace component of an id or nil if none. Returns other id component as second value"
   (let ((p (search *namespace-delimiter* id)))
     (if p
       (values
        (subseq id 0 p)
        (subseq id (+ p (length *namespace-delimiter*))))
-      (values nil id))))
+      (values nil id)))))
 
 (defun make-name(name &key
                  (char-transform #'char-downcase)
@@ -260,3 +261,102 @@ for subsequent parsing"))
 
 (defmethod read-lines((source vector))
   source)
+
+(defparameter *length-units*
+  '((:in . 1)
+    (:cm . 254/100)
+    (:em . 72/10)
+    (:ex . 10)
+    (:px . 75) ;; assume 75 dpi
+    (:% . 75/8) ;;  100% is 800 pixels
+    (:pt . 72)
+    (:pc . 12/72)
+    (:mm . 254/10))
+  "Conversion from various units to inches")
+
+(defun length-unit(unit)
+  (or (cdr (assoc unit *length-units*))
+      (error "Unacceptable unit ~S - acceptable units are ~S"
+             unit
+             (mapcar #'car *length-units*))))
+
+(defun convert-length-unit(size unit)
+  (unless (consp size) (setf size (cons size :px)))
+  (cons
+   (* (/ (car size) (length-unit (cdr size))) (length-unit unit))
+   unit))
+
+(defmacro when-bind ((var expr) &body body)
+  "Bind VAR to VALUE of expression, execute body if true"
+  `(let ((,var ,expr))
+    (when ,var
+      ,@body)))
+
+(defmacro while (test &body body)
+  "Repeat body while test returns true"
+  `(do ()
+    ((not ,test))
+    ,@body))
+
+(declaim (inline is-prefix-p is-suffix-p))
+
+(defun is-prefix-p(subseq seq &key (start 0) (test #'eql))
+  "Return true if subseq is a prefix in seq"
+  (let ((m (mismatch seq subseq :start1 start :test test)))
+    (or (not m) (= m (length subseq)))))
+
+(defun is-suffix-p(subseq seq &key (test #'eql))
+  "Return true if subseq is a suffix in seq"
+  (let ((m (mismatch seq subseq :from-end t :test test)))
+    (or (not m)
+        (= m (- (length seq) (length subseq))))))
+
+(defun join-strings(strings  &optional (separator #\space))
+  "Return a new string by joining together the STRINGS,
+separating each string with a SEPARATOR character or string"
+  (let ((first-p t))
+    (with-output-to-string(os)
+      (map 'nil
+           #'(lambda(s)
+               (if first-p
+                   (setf first-p nil)
+                   (write separator :stream os :escape nil))
+               (write-string s os))
+           strings))))
+
+(defmacro for ((var start stop) &body body)
+  (let ((gstop (gensym)))
+    `(do ((,var ,start (1+ ,var))
+          (,gstop ,stop))
+      ((> ,var ,gstop))
+      ,@body)))
+
+(defun copy-stream(from to &optional count)
+  "Copy from input stream FROM into output stream TO upto COUNT bytes,
+or until end-of-file if COUNT is NIL"
+  (let ((buf (make-array 8192 :element-type (stream-element-type from))))
+    (do*((pos (read-sequence buf from)
+              (read-sequence buf from))
+         (n pos (+ n pos)))
+        ((or (= 0 pos) (and count (> n count)))
+         (when (> pos 0)
+           (write-sequence buf to :end (- pos (- n count)))))
+      (write-sequence buf to :end pos))	))
+
+(defvar *search-path* nil "List of paths to search for dependencies in
+addition to those specified in settings")
+
+(defun find-file(pathname &key (search-path *search-path*))
+  "Return the first complete pathname for an existing file found by
+merging pathname with each item in a search path in turn. Returns nil
+if not found"
+  (flet ((ff(directory)
+           (some #'probe-file
+                 (directory (merge-pathnames pathname directory)))))
+    (some
+     #'(lambda(path)
+         (etypecase path
+           (list (some #'ff path))
+           (string (some #'ff (split-string path :delimiter #\:)))
+           (pathname (ff path))))
+     search-path)))

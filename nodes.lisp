@@ -319,7 +319,7 @@ children in to-element"
   (:method ((node element) (name string))
     (setf name (strip (string-downcase name)))
     (let ((class (attribute node :class)))
-      (unless (member name (split-sequence:split-sequence #\space  class)
+      (unless (member name (split-string class :delimiter  #\space)
                       :test #'string=)
         (setf (attribute node :class)
               (if class (concatenate 'string class " " name) name))))))
@@ -1015,14 +1015,3 @@ The new target is invalidated regardless."
       (nreverse results)))
   (:method(name (document document))
     (field-value name (docinfo document))))
-
-(defgeneric resolve-dependancy(node uri)
-  (:documentation "Return full path corresponding to uri in a node")
-  (:method ((node node) uri)
-    (let ((document (document node)))
-      (jarw.io:find-file uri
-                         :search-path
-                         `(,(setting :source-path document)
-                           ,(setting :search-path document)
-                           ,@jarw.io::*search-path*)))))
-

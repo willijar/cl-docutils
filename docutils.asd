@@ -14,7 +14,7 @@
   :version "0.0.1"
   :maintainer "Dr. John A.R. Williams"
   :licence "GPL v3"
-  :depends-on (:cl-ppcre :jarw :split-sequence :media)
+  :depends-on (:cl-ppcre :trivial-gray-streams :data-format-validation)
   :components
   ((:file "defpackage")
    (:file "nodes" :depends-on ("defpackage" "report" "utilities"

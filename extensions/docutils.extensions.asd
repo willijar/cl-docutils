@@ -14,6 +14,7 @@
   :version "0.0.1"
   :maintainer "Dr. John A.R. Williams"
   :licence "GPL v3"
-  :depends-on (:docutils :markup)
+  :depends-on (:docutils :markup :media)
   :components
-  ((:file "markup")))
+  ((:file "markup")
+   (:file "media")))

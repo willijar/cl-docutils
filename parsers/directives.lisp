@@ -167,17 +167,17 @@ lambda-list::= ({var | (var [specializer])}*
       (invalid-input input "Not a valid alignment argument")))
 
 (defmethod parse-input((spec (eql 'class)) input &key &allow-other-keys)
-  (when (jarw.parse::is-nil-string input)
+  (when (is-nil-string input)
     (invalid-input input "Class argument required but none supplied"))
   (join-strings
    (mapcar
     #'(lambda(s)
         (let ((id (make-id s)))
-          (if (jarw.parse::is-nil-string s)
+          (if (is-nil-string s)
               (invalid-input input
                              (format nil "cannot make ~S into a class name" s))
               id)))
-    (split-string input))))
+    (cl-ppcre:split "\\s+" input))))
 
 ;; figure sizes are numbers
 ;; if 0<=x<=1  it is a fraction of the natural size (text width or height)
@@ -206,8 +206,8 @@ lambda-list::= ({var | (var [specializer])}*
        (cons value unit))))
 
 (defmethod parse-input((spec (eql 'scale)) input &key  &allow-other-keys)
-  (let ((jarw.media:*length-units* '((:% . 75/8)
-                                      (nil . 1))))
+  (let ((docutils.utilities::*length-units* '((:% . 75/8)
+                                              (nil . 1))))
     (let ((v (parse-input 'length input)))
       (if (eql (cdr v) :%) (/ (car v) 100.0) (car v)))))
 
@@ -395,7 +395,7 @@ lambda-list::= ({var | (var [specializer])}*
         (report :info `("No content for meta tag ~S" ,name)
                 :data indented)
         (let ((node (make-node 'meta))
-              (tokens (split-sequence #\space name :remove-empty-subseqs t)))
+              (tokens (split-string name :delimiter #\space :remove-empty-subseqs t)))
           (add-child (parent state) node)
           (setf (attribute node :content) (join-strings indented))
           (handler-case
@@ -562,8 +562,7 @@ lambda-list::= ({var | (var [specializer])}*
                              (label (eql ':format)))
   (call-next-method
    (mapcar #'(lambda(s) (intern (string-upcase s) :keyword))
-           (split-string format nil '(#\space #\newline)
-                         :remove-empty-subseqs t))
+           (cl-ppcre:split "\\s+" format))
    element
    label))
 
@@ -590,7 +589,7 @@ lambda-list::= ({var | (var [specializer])}*
              (setf (attribute node :source) file)
              (setf text
                    (with-output-to-string(os)
-                     (jarw.io:copy-stream is os))))))
+                     (copy-stream is os))))))
       (url (setf (attribute node :source) url)
            ;;(setf text (inet.http::url-retrieve :http (inet.uri:url url)))
            (report :severe "URL reading not implemented"))

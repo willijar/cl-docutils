@@ -8,14 +8,10 @@
 
 (defpackage :docutils.writer.latex
   (:documentation "Latex writer for docutils")
-  (:use :cl :docutils  :docutils.utilities  :docutils.nodes :cl-ppcre)
+  (:use :cl :docutils  :docutils.utilities  :docutils.nodes :cl-ppcre
+        :trivial-gray-streams)
   (:shadowing-import-from :cl #:warning #:error #:inline #:special)
-  (:import-from :jarw.media #:latex-length #:convert-length-unit)
-  (:import-from :jarw.lib #:when-bind #:is-prefix-p #:while)
-  (:import-from :jarw.string #:join-strings)
-  (:import-from :jarw.io #:wsp #:line-wrap-stream #:stream-write-char
-                #:last-char #:unwrite-char)
-  (:import-from :split-sequence #:split-sequence)
+  (:import-from :data-format-validation #:join-strings #:+ws+ #:split-string)
   (:export #:latex-writer #:latex-output-stream))
 
 (in-package :docutils.writer.latex)
@@ -269,6 +265,11 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
       '(head-prefix pdfinfo pdfauthor head body-prefix docinfo body footer body-suffix))
   (:documentation "Docutils latex writer"))
 
+(defun docutils:write-latex(os document)
+  (let ((writer (make-instance 'latex-writer)))
+    (visit-node writer document)
+    (write-document writer document os)))
+
 (defmacro collect-parts(&body body)
   `(progn
      (setf (slot-value docutils::*current-writer* 'tmp-parts) nil)
@@ -300,7 +301,7 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
                  (elt quotes quote-index)
                (setf quote-index (mod (1+ quote-index) 2)))))
       (with-output-to-string(os)
-        (let ((parts (split-sequence #\" text)))
+        (let ((parts (split-string text :delimiter  #\")))
           (write-string (car parts) os)
           (dolist(part (cdr parts))
             (write-string (next-quote) os)
@@ -872,7 +873,7 @@ not supported in Latex"))
   (if (setting :use-latex-footnotes writer)
       (progn
         (part-append
-         "\\footnotetext[" (first (split-sequence #\space (as-text node)))
+         "\\footnotetext[" (first (split-string (as-text node) :delimiter  #\space))
          "]{")
         (call-next-method)
         (part-append "}" #\newline))
@@ -919,6 +920,12 @@ not supported in Latex"))
     (part-append #\newline "\\verb|begin_header|" #\newline)
     (call-next-method)
     (part-append #\newline "\\verb|end_header|" #\newline)))
+
+(defun latex-length(size)
+  (case (cdr size)
+    (:% (format nil "~A\\textwidth" (/ (car size) 100.0)))
+    (t  (format nil "~A~A" (car size) (cdr size)))))
+
 
 (defmethod visit-node((writer latex-writer) (node image))
   (push (attribute node :uri) (dependencies writer))
@@ -993,9 +1000,9 @@ not supported in Latex"))
            (= 1 (number-children node))
            (typep (child node 0) 'text))
       (progn
-        (part-append "\\begin{quote}\\begin{verbatim}" #\newline)
+        (part-append "\\begin{quote}" #\newline "\\begin{verbatim}" #\newline)
         (with-modes(writer :verbatim) (call-next-method))
-        (part-append #\newline "\\end{verbatim}\\end{quote}" #\newline))
+        (part-append #\newline "\\end{verbatim}" #\newline "\\end{quote}" #\newline))
       (with-modes(writer :literal-block :insert-non-breaking-blanks)
         (if (open-p (active-table writer))
             (progn
@@ -1303,9 +1310,92 @@ not supported in Latex"))
 (defmethod visit-node((writer latex-writer) (node version))
   (visit-docinfo-item writer node version))
 
+(declaim (inline wsp))
+(defun wsp(c) (member c data-format-validation::+ws+ :test #'char=))
+
+(defclass line-wrap-stream(fundamental-character-output-stream trivial-gray-stream-mixin)
+  ((col-index :initform 0 :reader stream-line-column :accessor col-index-of
+              :documentation
+              "Column number where next character will be written")
+   (stream :initarg :stream :reader stream-of :type stream
+           :documentation "Actual stream being written to - must be capable
+of writing characters using write-char")
+   (line-break-test :initform #'wsp :reader line-break-test
+                    :documentation "Function returns true if character can be used as line break")
+   (line-buffer :type (vector character *) :reader line-buffer-of))
+  (:documentation "A simple line-wrapping stream filter"))
+
+(defmethod initialize-instance :after((stream line-wrap-stream)
+                                      &key (line-length 80) &allow-other-keys)
+  (setf (slot-value stream 'line-buffer)
+        (make-array line-length :element-type 'character :fill-pointer 0)))
+
+(defmethod close((stream line-wrap-stream) &key abort)
+  (unless abort (finish-output stream)))
+
+(defmethod stream-finish-output((stream line-wrap-stream))
+  (write-string (line-buffer-of stream) (stream-of stream))
+  (setf (fill-pointer (line-buffer-of stream)) 0)
+  (finish-output (stream-of stream)))
+
+(defmethod stream-force-output((stream line-wrap-stream))
+  (write-string (line-buffer-of stream) (stream-of stream))
+  (setf (fill-pointer (line-buffer-of stream)) 0)
+  (force-output (stream-of stream)))
+
+(defmethod stream-clear-output((stream line-wrap-stream))
+  (setf (fill-pointer (line-buffer-of stream)) 0)
+  (clear-output (stream-of stream)))
+
+(defun stream-line-length(stream)
+  (array-total-size (line-buffer-of stream)))
+
+(defmethod stream-start-line-p((stream line-wrap-stream))
+  (zerop (stream-line-column stream)))
+
+(defmethod stream-write-char((stream line-wrap-stream) (c character))
+  (let* ((buffer (line-buffer-of stream))
+         (len (array-total-size buffer)))
+    (cond
+      ((eql c #\newline)
+       (write-line buffer (stream-of stream))
+       (setf (fill-pointer buffer) 0
+             (col-index-of stream) 0))
+      (t
+       (vector-push c buffer)
+       (incf (col-index-of stream))))
+    (when (= (fill-pointer buffer) len)
+      ;; buffer full
+      (let ((p (position-if (line-break-test stream) buffer :from-end t)))
+        (cond
+          (p  ;; if there is a break character write up until it
+           (write-line (subseq buffer 0 p) (stream-of stream))
+           (setf (col-index-of stream) 0)
+           (do((i (1+ p) (1+ i))
+               (j 0 (1+ j)))
+              ((>= i len) (setf (fill-pointer buffer) j))
+             (setf (aref buffer j) (aref buffer i))))
+          (t ;; no break character - just empty out buffer
+           (write-string buffer (stream-of stream))
+           (setf (fill-pointer buffer) 0)))))))
+
+(defun last-char(stream)
+  "Return last character written to the stream"
+  (let* ((buffer (line-buffer-of stream))
+         (l (fill-pointer buffer)))
+    (when (> l 0) (aref buffer (1- l)))))
+
+(defun unwrite-char(stream)
+  "Removes last character from buffer and returns it if possible. If
+buffer was empty returns nil."
+  (let* ((buffer (line-buffer-of stream))
+         (l (fill-pointer buffer)))
+    (when (> l 0) (vector-pop buffer))))
+
 (defclass latex-output-stream(line-wrap-stream)
   ()
-  (:documentation "Stream to help format latex out correctly - uses line wrapping, removes multiple spaces (including ~)"))
+  (:documentation "Stream to help format latex out correctly - uses
+  line wrapping, removes multiple spaces (including ~)"))
 
 (defmethod stream-write-char((stream latex-output-stream) (c character))
   (case c
@@ -1334,15 +1424,3 @@ not supported in Latex"))
          (call-next-method writer document os)
       (close os))))
 
-#|
-
-testing
-
-(setq *document*
-      (read-document
-       #p"/home/willijar/www/clews/tutorials/articles/adsl-transmitter.rst"
-       (make-instance 'docutils.parser.rst:rst-reader)))
-
-(write-document (make-instance 'latex-writer) *document* *standard-output*)
-
-|#

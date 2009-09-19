@@ -370,7 +370,8 @@ In reStructuredText_, there is no way to specify a document title
                   (t (error 'transform-condition))))))
           (cond
             ((> (length authornodes) 1)
-             (add-child docinfo (make-node 'docutils.nodes:authors authornodes)))
+             (add-child docinfo
+                        (make-node 'docutils.nodes:authors authornodes)))
             ((= (length authornodes) 1)
              (add-child docinfo (first authornodes)))
             (t (error 'transform-condition))))
@@ -388,7 +389,7 @@ bullet list with one paragraph (one author) per item" ,name
     (mapcar #'(lambda(a) (make-node 'docutils.nodes:text (strip a)))
 	    (or
 	     (dolist(authorsep (author-separators))
-	       (let ((authornames (split-sequence:split-sequence authorsep text)))
+	       (let ((authornames (split-string  text :delimiter authorsep)))
 		 (when (> (length authornames) 1) (return authornames))))
 	     (list text)))))
 

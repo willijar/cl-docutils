@@ -292,9 +292,8 @@ The :start and :end keyword arguments have their usual meanings."
               (add-attributes node attributes)
               node)))
       (if uri-match
-          (let* ((uri (join-strings
-                       (split-string
-                        (match-group uri-match 0) nil #(#\newline #\space))""))
+          (let* ((uri (cl-ppcre::regex-replace
+                       "\\s+" (match-group uri-match 0) ""))
                  (text (unescape (subseq rawtext 0 (match-start uri-match))))
                  (refname (normalise-name text))
                  (reference (reference-node text)))
@@ -321,5 +320,6 @@ The :start and :end keyword arguments have their usual meanings."
          (uri (if (and (not (match-group match 1)) (match-group match 2))
                   (concatenate 'string "mailto:" unescaped)
                   unescaped)))
-    (list (docutils:make-node 'docutils.nodes:reference :refuri uri unescaped))))
+    (list (docutils:make-node
+           'docutils.nodes:reference :refuri uri unescaped))))
 

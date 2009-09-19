@@ -225,11 +225,9 @@ line)."
                       &optional (transitions (transitions state)))
   (let ((line (current-line state-machine))
         (*current-line-number* (abs-line-number state-machine)))
-    (jarw.debug::debug-log "~A [~D] ~A" state *current-line-number* line)
     (dolist (transition transitions)
       (let ((match (transition-match transition line)))
         (when match
-          (jarw.debug::debug-log "Transition ~S" transition)
           (return-from check-line
             (apply-transition state transition match))))))
   (no-match state transitions))

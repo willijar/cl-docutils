@@ -43,23 +43,23 @@
     (:documentation "Common utilities used by several docutils components")
     (:use :cl)
     (:import-from :docutils.nodes #:document #:line)
-    (:import-from :split-sequence #:split-sequence)
-    (:import-from :jarw.lib #:when-bind)
-    (:import-from :jarw.string #:join-strings)
+    (:import-from :data-format-validation #:split-string)
     (:export
      #:+wsp+ #:line-blank-p #:escape2null #:unescape #:split-lines
      #:make-id #:normalise-name #:whitespace-normalise-name #:indented-block
      #:indent-level #:line-length #:rstrip #:strip #:lstrip #:wsp-char-p
      #:canonical-text #:translated-text #:*language* #:author-separators
      #:read-lines #:translate-text #:canonical-text #:babel #:latex-quotes
-     #:latex-double-quote-replacement #:namespace #:make-name #:*namespace*))
+     #:latex-double-quote-replacement #:namespace #:make-name #:*namespace*
+     #:length-unit #:convert-length-unit #:when-bind #:while #:for
+     #:is-suffix-p #:is-prefix-p #:copy-stream
+     #:find-file #:search-path*))
 
 (defpackage :docutils
   (:documentation "Document handling and structured text parsing")
-  (:use :cl :docutils.utilities :docutils.nodes)
-  (:import-from :jarw.string #:join-strings)
-  (:import-from :jarw.lib #:when-bind)
+  (:use :cl :docutils.utilities :docutils.nodes :data-format-validation)
   (:shadowing-import-from :cl #:warning #:error #:inline #:special)
+  (:shadowing-import-from :docutils.nodes #:date)
   (:export
    ;; source interface
    #:read-lines #:settings #:new-document
@@ -88,13 +88,14 @@
    #:backrefs #:referenced #:remove-node #:substitute-node #:resolved
    #:add-backref
    ;; settings interface
-   #:register-settings-spec #:setting ))
+   #:register-settings-spec #:setting
+   ;;simple example usage
+   #:read-rst #:write-html #:write-latex))
 
 (defpackage :docutils.transform
   (:documentation "Package containing standard docutils Node names")
-  (:use :cl :docutils :docutils.utilities :jarw.media)
-  (:import-from :jarw.parse #:format-output #:date)
-  (:import-from :jarw.io #:find-file #:*search-path*)
+  (:use :cl :docutils :docutils.utilities)
+  (:import-from :data-format-validation #:format-output #:date #:split-string)
   (:shadow #:docinfo)
   (:export
    #:decorations #:final-checks #:filter-messages

@@ -54,6 +54,9 @@
     (state-machine-run state-machine (read-lines source) :document *document*)
     (node state-machine)))
 
+(defun docutils:read-rst(input)
+  (read-document input (make-instance 'rst-reader)))
+
 (defmacro make-node(type &rest arguments)
   `(docutils:make-node
     ',(intern (string-upcase (eval type)) :docutils.nodes)
@@ -299,6 +302,43 @@ back up the calling chain until the correct section level is reached."
 
 (defun inline-text(text lineno)
   (parse-inline rst-patterns text :line lineno ))
+
+(defparameter +roman-numeral-map+
+  '(("M"  . 1000) ("CM" . 900) ("D"  . 500) ("CD" . 400)
+    ("C"  . 100) ("XC" . 90) ("L"  . 50) ("XL" . 40)
+    ("X"  . 10) ("IX" . 9) ("V"  . 5) ("IV" . 4) ("I"  . 1)))
+
+(defun to-roman(n)
+  "convert integer to Roman numeral"
+  (unless (< 0 n 4000) (error "number out of range (must be 1..3999)"))
+  (unless (integerp n) (error "non-integers can not be converted"))
+  (with-output-to-string(os)
+    (dolist(item +roman-numeral-map+)
+      (let ((numeral (car item))
+            (int (cdr item)))
+        (loop
+         (when (< n int) (return))
+         (write-sequence numeral os)
+         (decf n int))))))
+
+(defun from-roman(s)
+  "Convert roman numeral to integer"
+  (let ((result 0)
+        (index 0)
+        (slen (length s)))
+    (dolist(item +roman-numeral-map+)
+      (let* ((numeral (car item))
+             (int (cdr item))
+             (len (length numeral)))
+        (loop
+         (let ((end (+ index len)))
+           (unless (<= end slen) (return))
+           (unless (string-equal numeral s :start2 index :end2 end)
+             (return))
+           (incf result int)
+           (incf index len)))))
+    (when (< index slen) (error "Invalid Roman numeral ~S" s))
+    result))
 
 (defparameter grid-table-top-pattern "^\\+-[-+]+-\\+ *$")
 (defparameter simple-table-top-pattern  "^=+( +=+)+ *$")
@@ -1181,18 +1221,18 @@ parsed from an option marker match."
     (when option-block
       (setf option-block (parse-extension-options state option-block)))
     (handler-bind
-        ((jarw.parse:unknown-option
+        ((unknown-option
           #'(lambda(e)
               (report :error (write-to-string e :escape nil))
               (invoke-restart 'continue)))
-         (jarw.parse::too-many-arguments
+         (too-many-arguments
           #'(lambda(e)
               (report :info (write-to-string e :escape nil))
-              (invoke-restart 'jarw.parse::ignore-extra-arguments)))
-         (jarw.parse:invalid-input
+              (invoke-restart 'ignore-extra-arguments)))
+         (invalid-input
           #'(lambda(e)
               (report :error (write-to-string e :escape nil))
-              (invoke-restart 'jarw.parse::use-default))))
+              (invoke-restart 'use-default))))
       (values
        (when (directive-arguments directive)
          (parse-arguments (directive-arguments directive)

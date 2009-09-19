@@ -10,12 +10,12 @@
   (:documentation "HTML with CSS writer for docutils")
   (:use :cl :docutils :docutils.utilities :docutils.nodes)
   (:import-from :docutils #:with-part)
-  (:import-from :jarw.lib #:when-bind)
-  (:import-from :jarw.string #:join-strings)
+  (:import-from :data-format-validation #:join-strings)
   (:shadowing-import-from :cl #:warning #:error #:inline #:special)
   (:export #:html-writer
            #:head-prefix #:head #:body-pre-docinfo #:docinfo #:body
-           #:footer #:fragment #:body-suffix))
+           #:footer #:fragment #:body-suffix
+           #:html-url))
 
 (in-package :docutils.writer.html)
 
@@ -56,6 +56,11 @@
         (body-suffix  "</body>
 </html>")))
   (:documentation "Docutils html writer"))
+
+(defun docutils:write-html(os document)
+  (let ((writer (make-instance 'html-writer)))
+    (visit-node writer document)
+    (write-document writer document os)))
 
 (defmethod write-part((writer html-writer) (part (eql 'fragment)) (os stream))
   (write-part writer 'body-pre-docinfo os)
@@ -103,7 +108,7 @@ specified. Default is not to do this (as recommended).")
                (write-line "<style type=\"text/css\">" os)
                (with-open-file(is (setting :stylesheet writer)
                                   :direction :input :if-does-not-exist nil)
-                 (when is (jarw.io:copy-stream is os)))
+                 (when is (copy-stream is os)))
                (write-line "</style>" os)))))
       #+nil(when (or (< (number-children document) 1)
                 (not (typep (child document 0) 'title)))
@@ -542,35 +547,32 @@ specified. Default is not to do this (as recommended).")
 </div>
 "))))
 
-(defun math-out(writer node
-                &optional (text (whitespace-normalise-name
-                                 (as-text (child node 0)))))
-  (declare (ignore writer))
-  (let* ((media-server jarw.media:*media-server*))
-    (part-append
-     (if media-server
-         (format nil "<img class=\"math\" alt=\"~A\" src=\"~A\" />"
-                 text
-                 (jarw.media:media-variant-url
-                  (jarw.media:media-variant
-                   (jarw.media:register-media
-                    text
-                    media-server
-                    :content-type "text/x-eqn")
-                   media-server
-                   "image/png")
-                  media-server))
+(defgeneric html-url(writer uri &rest args)
+  (:documentation "Resolve an external media reference to a url for
+  this writer on the basis of content-type and args. May be
+  specialised to, for example, use a media server or automatically do
+  conversions etc.")
+  (:method((writer html-writer) uri &rest args)
+    (declare (ignore args))
+    uri))
+
+(defun math-out(writer text)
+  (part-append
+   (let ((url (html-url writer text :content-type "text/x-eqn")))
+     (if url
+         (format nil "<img class=\"math\" alt=\"~A\" src=\"~A\" />" text url)
          (format nil " <code class=\"math\">~A</code> " text)))))
 
 (defmethod visit-node((writer html-writer) (node math))
-  (math-out writer node
+  (math-out writer
             (concatenate
              'string
              "$" (whitespace-normalise-name (as-text (child node 0))) "$")))
 
 (defmethod visit-node((writer html-writer) (node equation))
     (part-append #\newline "<p class=\"equation\">")
-    (math-out writer node)
+    (math-out writer (whitespace-normalise-name
+                                 (as-text (child node 0))))
     (when (> (number-children node) 1)
       (part-append
        " <span class=\"equation-label\">"
@@ -591,25 +593,14 @@ specified. Default is not to do this (as recommended).")
 
 (defmethod visit-node((writer html-writer) (node image))
   (let* ((atts nil)
-         (uri (attribute node :uri))
-         (media-server jarw.media:*media-server*))
+         (uri (attribute node :uri)))
     (with-attributes(k v node) (setf (getf atts k) v))
     (setf (getf atts :src)
-          (if (and (pathnamep uri) media-server)
-              (jarw.media:media-variant-url
-               (jarw.media:media-variant
-                (jarw.media:register-media uri media-server)
-                media-server
-                (or (find (jarw.media:file-suffix-content-type uri)
-                          '("image/png" "image/gif" "image/jpeg")
-                          :test #'string-equal)
-                    "image/png")
-                `(:width ,(attribute node :width)
-                  :height ,(attribute node :height)
-                  :angle ,(attribute node :angle)
-                  :scale ,(or (attribute node :scale) 1.0)))
-               media-server)
-              uri))
+          (html-url writer uri
+                    :width (attribute node :width)
+                    :height (attribute node :height)
+                    :angle (attribute node :angle)
+                    :scale (or (attribute node :scale) 1.0)))
     (remf atts :uri)
     (if (setting :image-sizes writer)
         (let ((scale (getf atts :scale))

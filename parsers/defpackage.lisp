@@ -9,9 +9,6 @@
   (:documentation "Library for docutils parsers")
   (:use :cl :docutils :docutils.utilities)
   (:import-from :cl-ppcre #:scan)
-  (:import-from :jarw.lib #:when-bind)
-  (:import-from :jarw.string #:join-strings)
-  (:import-from :cl-ppcre #:scan)
   (:export
    #:state-machine-eof #:unexpected-indentation #:state-machine
    #:state-machine-run  #:state-correction #:transition-correction
@@ -34,24 +31,17 @@
    (:documentation "CALS Table parser")
    (:use :cl :docutils :docutils.utilities)
    (:import-from :cl-ppcre #:create-scanner #:scan)
-   (:import-from :jarw.lib #:while #:for)
    (:export #:parse-table #:simple-table-parser #:grid-table-parser
 	    #:table-condition))
 
 (defpackage :docutils.parser.rst
   (:documentation "Restructured text parser for docutils")
   (:use :cl :docutils :docutils.parser :docutils.utilities
-        :docutils.parser.tables)
+        :docutils.parser.tables :data-format-validation)
   (:shadow #:make-node #:line)
   (:import-from :docutils #:add-transform)
   (:import-from :cl-ppcre #:create-scanner #:scan #:do-scans
-                #:define-parse-tree-synonym)
-  (:import-from :jarw.parse #:invalid-input #:parse-input #:format-output
-                #:parse-arguments #:parse-options)
-  (:import-from :jarw.string #:split-string #:join-strings
-                #:to-roman #:from-roman)
-  (:import-from :split-sequence #:split-sequence)
-  (:import-from :jarw.lib #:is-prefix-p #:is-suffix-p #:when-bind)
-  (:import-from :jarw.media #:length-unit #:convert-length-unit)
+                #:define-parse-tree-synonym #:split)
+  (:import-from :data-format-validation #:is-nil-string)
   (:export #:rst-reader #:def-directive #:def-role #:&allow-spaces
            #:&option #:&content #:&content-parser))
