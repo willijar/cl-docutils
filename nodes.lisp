@@ -597,6 +597,7 @@ outside of the flow of the document's main text."))
 (defmethod allowed-child-p((parent field) child &optional index)
   (let ((index (or index (number-children parent))))
     (typecase child
+      (system-message t)
       (field-name (evenp index))
       (field-body (oddp index)))))
 
