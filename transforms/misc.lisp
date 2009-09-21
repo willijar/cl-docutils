@@ -52,9 +52,9 @@
 
 (defclass evaluate-transform(transform)
   ()
-  (:documentation "eval evaluate nodes"))
-
-
+  (:documentation "Evaluate nodes cahcing result"))
 
 (defmethod transform((transform evaluate-transform))
-  (evaluate (node transform)))
+  (dolist(node (collate-nodes(node (node transform))
+                (typep node 'docutils.nodes::evaluateable)))
+    (setf (slot-value node 'docutils::result) (evaluate node))))

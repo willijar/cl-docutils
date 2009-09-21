@@ -251,7 +251,7 @@ children in to-element"
    (expression :initarg :expression :reader expression
                :documentation "Read expression to be evaluated
   at some later time.")
-   (result :documentation "Result obtained from  evaluating expression"))
+   (result :documentation "Cached result obtained from evaluating expression"))
   (:documentation "Base for nodes which can be evaluated"))
 
 (defclass inline-evaluation(evaluateable text)
@@ -288,7 +288,7 @@ error in the evaluator")
 
 (defgeneric evaluate(node)
   (:documentation "Evaluate the node in current dynamic context,
-  returning the result (which is cached).")
+  returning the result.")
   (:method ((node evaluateable))
      (if (slot-boundp node 'result)
          (slot-value node 'result)
@@ -302,13 +302,11 @@ error in the evaluator")
                            (write-to-string e :escape nil :readably nil ) ))))
            (ecase (evaluation-language node)
              (:lisp
-              (setf (slot-value node 'result)
-                    (funcall *evaluator* (expression node))))))))
+              (funcall *evaluator* (expression node)))))))
   (:method((node docutils.nodes:element))
     (with-children(child node) (evaluate child))
     node)
   (:method(node) (declare (ignore node))))
-
 
 (defclass fixed-text-element(text-element)
   ()
