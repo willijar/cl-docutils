@@ -58,9 +58,12 @@
   (:documentation "Docutils html writer"))
 
 (defun docutils:write-html(os document)
-  (let ((writer (make-instance 'html-writer)))
-    (visit-node writer document)
-    (write-document writer document os)))
+  (if (streamp os)
+      (let ((writer (make-instance 'html-writer)))
+        (visit-node writer document)
+        (write-document writer document os))
+      (with-open-file(s os :direction :output :if-exists :supersede :if-does-not-exist :create)
+        (docutils:write-html s document))))
 
 (defmethod write-part((writer html-writer) (part (eql 'fragment)) (os stream))
   (write-part writer 'body-pre-docinfo os)
