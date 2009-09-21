@@ -353,7 +353,6 @@ In reStructuredText_, there is no way to specify a document title
       (t t))))
 
 (defun extract-authors(field name docinfo)
-  (declare (ignore name))
   (let ((value (child field 1)))
     (handler-case
         (let ((authornodes
