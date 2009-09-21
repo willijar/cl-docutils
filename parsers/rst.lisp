@@ -283,7 +283,7 @@ back up the calling chain until the correct section level is reached."
         (throw 'state-machine-eof nil)))))
 
 (defun paragraph(lines lineno)
-  "Return a paragraph node & a boolean: literal_block next?"
+  "Return a paragraph node & a boolean: literal-block next?"
   (let* ((data (join-strings (map 'list #'rstrip lines)))
          (literal-next nil)
          (text nil)

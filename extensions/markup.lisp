@@ -51,3 +51,25 @@
 
 (defun markup::parse-restructured-text(text)
   `(markup::rst ,text))
+
+(in-package :docutils.writer.latex)
+
+(defmethod visit-node ((writer latex-writer)
+                       (node evaluateable))
+  (case (output-format node)
+    (:markup
+     (part-append
+      (with-output-to-string(os) (markup:latex os (evaluate node)))))
+    (:latex (part-append (evaluate node)))
+    (t (call-next-method))))
+
+(in-package :docutils.writer.html)
+
+(defmethod visit-node((writer html-writer)
+                      (node evaluateable))
+ (case (output-format node)
+    (:markup
+     (part-append
+      (with-output-to-string(os) (markup:html os (evaluate node)))))
+    (:latex (part-append (evaluate node)))
+    (t (call-next-method))))

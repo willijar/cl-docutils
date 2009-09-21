@@ -1058,5 +1058,9 @@ specified. Default is not to do this (as recommended).")
   (add-docinfo-item(writer node "Version" :meta nil)
                    (call-next-method)))
 
-(defmethod visit-node ((writer writer) (node docutils.nodes:evaluate))
-  (part-append (as-text node)))
+(defmethod visit-node ((writer html-writer) (node docutils.nodes:evaluateable))
+  (if (eql (output-format node) :html)
+        (part-append (evaluate node))
+        (call-next-method)))
+
+

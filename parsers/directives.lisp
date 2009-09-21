@@ -685,3 +685,27 @@ directive not supported (specified by ~s role) " base-role-name)))
         (add-child parent table))
       (report
        :error "Content block expected for the table directive; none found.")))
+
+(def-directive evaluation
+    (parent language
+            &option
+            (output symbol nil)
+            (package symbol nil)
+            &content content)
+  (let ((language (intern (string-upcase language) :keyword)))
+    (if content
+        (let ((content
+               (with-output-to-string(os)
+                 (loop :for line :across content
+                    :do (write-line line os)))))
+          (add-child
+           parent
+           (make-instance
+            'block-evaluation
+            :output-format output
+            :content (ecase language
+                       (:lisp (let ((*package*
+                                     (or (and package (find-package package))
+                                         *package*)))
+                                (read-from-string content)))))))
+      (report :error "Evaluation directive is empty; content required."))))

@@ -20,8 +20,6 @@
 
 (in-package :docutils.transform)
 
-(defvar *evaluator* #'eval)
-
 (defclass class-attribute(transform)
   ()
   (:default-initargs :priority 210)
@@ -56,20 +54,7 @@
   ()
   (:documentation "eval evaluate nodes"))
 
-(defgeneric evaluate(node)
-  (:documentation "Evaluate the node in current dynamic context")
-  (:method :around (node)
-     (handler-bind ((style-warning #'muffle-warning)
-                    (error #'(lambda(e) (report :warn (write-to-string e :escape nil :readably nil ) ))))
-       (call-next-method)))
-  (:method(node) node)
-  (:method((node docutils.nodes:element))
-    (with-children(child node) (evaluate child))
-    node)
-  (:method((node docutils.nodes:evaluate))
-          (setf (slot-value node 'docutils::result)
-                (funcall *evaluator* (slot-value node 'docutils::expr)))
-    node))
+
 
 (defmethod transform((transform evaluate-transform))
   (evaluate (node transform)))

@@ -1310,10 +1310,16 @@ not supported in Latex"))
 (defmethod visit-node((writer latex-writer) (node version))
   (visit-docinfo-item writer node version))
 
+(defmethod visit-node((writer latex-writer) (node evaluateable))
+  (if (eql (output-format node) :latex)
+        (part-append (evaluate node))
+        (call-next-method)))
+
 (declaim (inline wsp))
 (defun wsp(c) (member c data-format-validation::+ws+ :test #'char=))
 
-(defclass line-wrap-stream(fundamental-character-output-stream trivial-gray-stream-mixin)
+(defclass line-wrap-stream(fundamental-character-output-stream
+                           trivial-gray-stream-mixin)
   ((col-index :initform 0 :reader stream-line-column :accessor col-index-of
               :documentation
               "Column number where next character will be written")

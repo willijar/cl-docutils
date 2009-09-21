@@ -179,6 +179,16 @@ child nodes."))
       (list (setf contents (append item contents)))))
   node)
 
+(defmacro with-children((node parent &key (copy nil)) &body body)
+  "Exevute body over the children of a node
+During execution of the body a catch tags is available for
+:skip-siblings which will terminate the iteration"
+  `(catch :skip-siblings
+     (map 'nil #'(lambda(,node) ,@body)
+	  ,(if copy
+	       `(copy-list (slot-value ,parent 'children))
+	       `(slot-value ,parent 'children)))))
+
 (defgeneric child-text-separator(element)
   (:documentation "Return separator for child nodes in as-text")
   (:method ((element element))
@@ -232,28 +242,73 @@ children in to-element"
        (add-child node (make-node 'text (join-strings item #\newline))))))
   node)
 
-(defclass evaluate(text)
-  ((expr :initarg :expr :documentation "Text to be read and evaluated
-  at some later time")
-   (result :documentation "Result obtained from  evaluating expr"))
-  (:documentation "A node containing an expression to be evaluated"))
+(defclass evaluateable()
+  ((language :initarg :language
+             :initform :lisp :reader evaluation-language)
+   (output-format
+    :type symbol :initform nil :initarg :format :reader output-format
+    :documentation "Specifies what format the output is in (for writers).")
+   (expression :initarg :expression :reader expression
+               :documentation "Read expression to be evaluated
+  at some later time.")
+   (result :documentation "Result obtained from  evaluating expression"))
+  (:documentation "Base for nodes which can be evaluated"))
 
-(defmethod as-sexp((node evaluate))
-  `(eval ',(slot-value node 'expr)
+(defclass inline-evaluation(evaluateable text)
+  ()
+  (:documentation "Inline evaluateable element"))
+
+(defclass block-evaluation(evaluateable element)
+  ()
+  (:documentation "Block evaluateable element"))
+
+(defmethod as-sexp((node evaluateable))
+  `(eval ',(slot-value node 'expression)
     ,@(when (slot-boundp node 'result)
             `(" => " ,(slot-value node 'result)))))
 
-(defmethod as-text((node evaluate))
+(defmethod as-text((node evaluateable))
   (write-to-string
-   (slot-value node (if (slot-boundp node 'result) 'result 'expr))
+   (slot-value node (if (slot-boundp node 'result) 'result 'expression))
    :readably nil :escape nil))
 
-(defmethod copy-of-node((node evaluate))
+(defmethod copy-of-node((node evaluateable))
   (let ((copy (call-next-method)))
-    (dolist(slot '(expr result))
+    (dolist(slot '(expression result output-format language))
       (when (slot-boundp node slot)
         (setf (slot-value copy slot) (slot-value node slot))))
     copy))
+
+(defvar *default-reader-package* (find-package :common-lisp-user)
+  "The default package Lisp expressions in the document are to be read into")
+(defvar *evaluator* #'eval "Function to call when evaluating an
+evaluateable node")
+(defvar *evaluation-error-hook* nil "Hook to call when there is an
+error in the evaluator")
+
+(defgeneric evaluate(node)
+  (:documentation "Evaluate the node in current dynamic context,
+  returning the result (which is cached).")
+  (:method ((node evaluateable))
+     (if (slot-boundp node 'result)
+         (slot-value node 'result)
+         (handler-bind
+             ((style-warning #'muffle-warning)
+              (error
+               #'(lambda(e)
+                   (if *evaluation-error-hook*
+                       (funcall *evaluation-error-hook* e))
+                   (report :error
+                           (write-to-string e :escape nil :readably nil ) ))))
+           (ecase (evaluation-language node)
+             (:lisp
+              (setf (slot-value node 'result)
+                    (funcall *evaluator* (expression node))))))))
+  (:method((node docutils.nodes:element))
+    (with-children(child node) (evaluate child))
+    node)
+  (:method(node) (declare (ignore node))))
+
 
 (defclass fixed-text-element(text-element)
   ()
@@ -317,12 +372,14 @@ children in to-element"
 (defgeneric add-class(node name)
   (:documentation "Add class to given node")
   (:method ((node element) (name string))
-    (setf name (strip (string-downcase name)))
-    (let ((class (attribute node :class)))
-      (unless (member name (split-string class :delimiter  #\space)
-                      :test #'string=)
-        (setf (attribute node :class)
-              (if class (concatenate 'string class " " name) name))))))
+    (let ((name (strip (string-downcase name))))
+      (let ((class (attribute node :class)))
+        (if class
+            (unless (member name (split-string class :delimiter  #\space)
+                            :test #'string=)
+              (setf (attribute node :class)
+                    (concatenate 'string class " " name)))
+            (setf (attribute node :class) name))))))
 
 ;;; child interface
 (defmethod child((node element) (index integer))
@@ -777,15 +834,6 @@ data it requires."))
 
 ;; Element tree traversal
 
-(defmacro with-children((node parent &key (copy nil)) &body body)
-  "Exevute body over the children of a node
-During execution of the body a catch tags is available for
-:skip-siblings which will terminate the iteration"
-  `(catch :skip-siblings
-     (map 'nil #'(lambda(,node) ,@body)
-	  ,(if copy
-	       `(copy-list (slot-value ,parent 'children))
-	       `(slot-value ,parent 'children)))))
 
 (defmacro with-nodes((node root  &key (copy nil)) &body body)
   "Traverse a node tree depth first executing body for side affects.

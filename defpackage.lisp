@@ -37,7 +37,8 @@
    #:raw #:emphasis #:strong #:literal #:reference #:footnote-reference
    #:citation-reference #:substitution-reference #:title-reference
    #:abbreviation #:acronym #:superscript #:subscript #:image
-   #:problematic #:generated #:meta #:equation #:math #:evaluate))
+   #:problematic #:generated #:meta #:equation #:math
+   #:evaluateable #:inline-evaluation #:block-evaluation))
 
 (defpackage docutils.utilities
     (:documentation "Common utilities used by several docutils components")
@@ -89,6 +90,9 @@
    #:add-backref
    ;; settings interface
    #:register-settings-spec #:setting
+   ;; evaluateable nodes interface
+    #:evaluate  #:*evaluation-error-hook* #:*evaluator*
+    #:*default-reader-package* #:output-format #:evaluation-language
    ;;simple example usage
    #:read-rst #:write-html #:write-latex))
 

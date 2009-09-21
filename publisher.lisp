@@ -122,9 +122,14 @@ applied after parsing"))
     ;; so they provide a permanent record for a particular document
     (dolist(setting (slot-value reader 'settings))
       (setf (setting (first setting) *document*) (rest setting)))
-    (call-next-method)
-    (do-transforms *pending-transforms* *document*)
-    *document*))
+    (let ((*package*
+           (let ((p (setting :reader-package *document*)))
+             (or (and p (find-package p))
+                 (find-package *default-reader-package*)
+                 (find-package :common-lisp-user)))))
+      (call-next-method)
+      (do-transforms *pending-transforms* *document*)
+      *document*)))
 
 (defun handle-transform-condition(e document)
   "Deal with transform errors, adding system message to messages node"
@@ -251,6 +256,13 @@ in the document."))
 process further children"
   (catch :skip-siblings
     (with-children(child entity) (visit-node writer child))))
+
+(defmethod visit-node (writer (node evaluateable))
+  (let ((evaluation (evaluate node))
+        (format (output-format node)))
+    (cond
+      ((stringp format) (part-append (format nil format evaluation)))
+      ((not format) (part-append (write-to-string evaluation))))))
 
 ;;; -------------------------------------------------
 ;;; Processing settings and configuration handling
@@ -389,6 +401,8 @@ cause a halt")
    (:version
     boolean nil
     "Show this program's version number and exit.")
+   (:reader-package symbol nil
+             "The package into which Lisp expressions are to be read.")
    (:help
     boolean nil
     "Show help message and exit.")))
