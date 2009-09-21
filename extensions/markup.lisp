@@ -73,3 +73,9 @@
       (with-output-to-string(os) (markup:html os (evaluate node)))))
     (:latex (part-append (evaluate node)))
     (t (call-next-method))))
+
+;; make markup the default
+
+(register-settings-spec
+ '((:default-evaluation-format symbol nil
+    "The format of output from evaluation nodes")))

@@ -689,7 +689,7 @@ directive not supported (specified by ~s role) " base-role-name)))
 (def-directive evaluation
     (parent language
             &option
-            (output symbol nil)
+            (format symbol nil)
             (package symbol nil)
             &content content)
   (let ((language (intern (string-upcase language) :keyword)))
@@ -701,11 +701,11 @@ directive not supported (specified by ~s role) " base-role-name)))
           (add-child
            parent
            (make-instance
-            'block-evaluation
-            :output-format output
-            :content (ecase language
-                       (:lisp (let ((*package*
-                                     (or (and package (find-package package))
-                                         *package*)))
-                                (read-from-string content)))))))
+            'docutils.nodes:block-evaluation
+            :format (or format (setting :default-evaluation-format parent))
+            :expression (ecase language
+                          (:lisp (let ((*package*
+                                        (or (and package (find-package package))
+                                            *package*)))
+                                   (read-from-string content)))))))
       (report :error "Evaluation directive is empty; content required."))))

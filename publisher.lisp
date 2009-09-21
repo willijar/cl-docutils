@@ -403,6 +403,8 @@ cause a halt")
     "Show this program's version number and exit.")
    (:reader-package symbol nil
              "The package into which Lisp expressions are to be read.")
+   (:default-evaluation-format symbol nil
+     "The format of output from evaluation nodes")
    (:help
     boolean nil
     "Show help message and exit.")))
