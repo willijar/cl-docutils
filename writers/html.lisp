@@ -705,7 +705,7 @@ specified. Default is not to do this (as recommended).")
     (part-append
      (cond
        ((not (line-blank-p token))
-        (format nil "<span clas=\"pre\">~A</span>"
+        (format nil "<span class=\"pre\">~A</span>"
                 (encode token)))
        ((= 1 (length token)) token)
        ((with-output-to-string(os)
