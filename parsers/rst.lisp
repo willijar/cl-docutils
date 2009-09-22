@@ -1522,7 +1522,7 @@ state should take over."))
   (values nil 'definition))
 
 ;; a bug fix on Python vesion which didn't recognise explicit markup
-;; immediatley following a definition list!!
+;; immediately following a definition list!!
 (defmethod explicit-markup((state definition-list) match)
   (declare (ignore match))
   (previous-line (state-machine state))
@@ -1807,14 +1807,16 @@ a paragraph, a definition list item, or a title."))
          (node-list (list term-node)))
     (dolist(node text-nodes)
       (if (typep node 'docutils.nodes:text)
-          (let* ((parts (cl-ppcre:split " +: +" (as-text node)))
-                 (txt (make-instance 'docutils.nodes:text
+          (let ((parts (cl-ppcre:split " +: +" (as-text node))))
+            (if parts
+                (let ((txt (make-instance 'docutils.nodes:text
                                      :text (rstrip (car parts)))))
-            (add-child (car node-list) txt)
-            (dolist(part (rest parts))
-              (let((classifier (make-node 'classifier)))
-                (add-child classifier part)
-                (push classifier node-list))))
+                  (add-child (car node-list) txt)
+                  (dolist(part (rest parts))
+                    (let((classifier (make-node 'classifier)))
+                      (add-child classifier part)
+                      (push classifier node-list))))
+                (add-child (car node-list) node)))
           (add-child (car node-list) node)))
     (nreverse node-list)))
 

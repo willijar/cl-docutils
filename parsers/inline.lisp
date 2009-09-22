@@ -183,18 +183,18 @@ The :start and :end keyword arguments have their usual meanings."
                               string
                               :restore-backslashes t
                               :start cursor :end end))))))
-           (nconc
-            (mapcan
-             #'(lambda(m)
-                 (let ((match (car m))
-                       (func (cdr m)))
-                   (nconc
-                    (make-txt (match-start match))
-                    (prog1
-                        (funcall func match :line line)
-                      (setf cursor (match-end match))))))
-             matches)
-            (make-txt end)))))))))
+             (nconc
+              (mapcan
+               #'(lambda(m)
+                   (let ((match (car m))
+                         (func (cdr m)))
+                     (nconc
+                      (make-txt (match-start match))
+                      (prog1
+                          (funcall func match :line line)
+                        (setf cursor (match-end match))))))
+               matches)
+              (make-txt end)))))))))
 
 (defmacro make-inline-nodes(type attributes &optional children)
   (let ((node (gensym)))
