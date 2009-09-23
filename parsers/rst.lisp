@@ -1807,16 +1807,15 @@ a paragraph, a definition list item, or a title."))
          (node-list (list term-node)))
     (dolist(node text-nodes)
       (if (typep node 'docutils.nodes:text)
-          (let ((parts (cl-ppcre:split " +: +" (as-text node))))
-            (if parts
-                (let ((txt (make-instance 'docutils.nodes:text
-                                     :text (rstrip (car parts)))))
+          (let* ((parts (cl-ppcre:split " +: +" (as-text node)))
+                 (txt (make-instance
+                       'docutils.nodes:text
+                       :text (if (rest parts) (rstrip (car parts)) (car parts)))))
                   (add-child (car node-list) txt)
                   (dolist(part (rest parts))
                     (let((classifier (make-node 'classifier)))
                       (add-child classifier part)
                       (push classifier node-list))))
-                (add-child (car node-list) node)))
           (add-child (car node-list) node)))
     (nreverse node-list)))
 
