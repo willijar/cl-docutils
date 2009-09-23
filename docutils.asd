@@ -11,7 +11,7 @@
   :name "Docutils"
   :description "Document utilities and Restructured text parser"
   :author "Dr. John A.R. Williams"
-  :version "0.0.1"
+  :version "0.1.1"
   :maintainer "Dr. John A.R. Williams"
   :licence "GPL v3"
   :depends-on (:cl-ppcre :trivial-gray-streams :data-format-validation)

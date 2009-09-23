@@ -23,8 +23,9 @@
 
 (defclass html-writer(writer)
   ((stylesheet
-    :initform "default.css" :initarg :stylesheet
-    :documentation "Specify a stylesheet. If a  URL put link in output HTML file, if a pathname embed stylesheet in output HTML")
+    :initform "docutils.css" :initarg :stylesheet
+    :documentation "Specify a stylesheet. If a URL put link in output
+    HTML file, if a pathname embed stylesheet in output HTML")
 
    ;; parts of document filled in during translate
    head-prefix
