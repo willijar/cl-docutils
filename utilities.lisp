@@ -360,3 +360,113 @@ if not found"
            (string (some #'ff (split-string path :delimiter #\:)))
            (pathname (ff path))))
      search-path)))
+
+(defclass line-wrap-stream(fundamental-character-output-stream
+                           trivial-gray-stream-mixin)
+  ((stream-line-column :initform 0 :reader stream-line-column)
+   (indentation-level
+    :initform 0 :reader indentation-level :initarg :indentation-level
+    :documentation "Current indentation level")
+   (indentation-character
+    :type character :initform #\space :reader indentation-character)
+   (stream :initarg :stream :reader stream-of :type stream
+           :documentation "Actual stream being written to - must be capable
+of writing characters using write-char")
+   (line-break-test :initform #'wsp-char-p :reader line-break-test
+                    :documentation "Function returns true if character can be used as line break")
+   (line-buffer :type (vector character *) :reader line-buffer-of))
+  (:documentation "A simple line-wrapping stream filter"))
+
+(defmethod initialize-instance :after((stream line-wrap-stream)
+                                      &key (line-length 80) &allow-other-keys)
+  (setf (slot-value stream 'line-buffer)
+        (make-array line-length :element-type 'character :fill-pointer 0)))
+
+(defmethod close((stream line-wrap-stream) &key abort)
+  (unless abort (finish-output stream)))
+
+(defmethod stream-finish-output((stream line-wrap-stream))
+  (write-string (line-buffer-of stream) (stream-of stream))
+  (setf (fill-pointer (line-buffer-of stream)) 0)
+  (finish-output (stream-of stream)))
+
+(defmethod stream-force-output((stream line-wrap-stream))
+  (write-string (line-buffer-of stream) (stream-of stream))
+  (setf (fill-pointer (line-buffer-of stream)) 0)
+  (force-output (stream-of stream)))
+
+(defmethod stream-clear-output((stream line-wrap-stream))
+  (setf (fill-pointer (line-buffer-of stream)) 0)
+  (clear-output (stream-of stream)))
+
+(defun stream-line-length(stream)
+  (array-total-size (line-buffer-of stream)))
+
+(defmethod stream-start-line-p((stream line-wrap-stream))
+  (zerop (stream-line-column stream)))
+
+(defmethod (setf indentation-level)((v integer) (stream line-wrap-stream))
+  (assert (< v (stream-line-length stream))
+          (v)
+          "Indentation level must be less than ~D character line length."
+          (stream-line-length stream))
+  (setf (slot-value stream 'indentation-level) v))
+
+(defmethod stream-write-char((stream line-wrap-stream) (c character))
+ (let* ((buffer (line-buffer-of stream))
+        (indent (indentation-level stream))
+        (len (array-total-size buffer))
+        (os (stream-of stream)))
+   (with-slots(stream-line-column) stream
+     (flet ((indent()
+               (let ((c (indentation-character stream)))
+                 (dotimes(x indent) (write-char c  os))
+                 (setf stream-line-column indent))))
+    (cond
+      ((or (eql c #\newline)
+           (and (>= stream-line-column len)
+                (funcall (line-break-test stream) c)))
+       (write-line buffer os)
+       (setf (fill-pointer buffer) 0
+             stream-line-column 0))
+      (t
+       (when (zerop stream-line-column)
+             (indent))
+       (vector-push c buffer)
+       (incf stream-line-column)))
+    (when (= (fill-pointer buffer) len)
+      ;; buffer full
+      (let ((p (position-if (line-break-test stream) buffer :from-end t)))
+        (cond
+          (p  ;; if there is a break character write up until it
+           (write-line (subseq buffer 0 p) os)
+           (setf stream-line-column 0)
+           (do((i (1+ p) (1+ i))
+               (j 0 (1+ j)))
+              ((>= i len) (setf (fill-pointer buffer) j))
+             (setf (aref buffer j) (aref buffer i))))
+          (t ;; no break character - just empty out buffer
+           (write-string buffer os)
+           (setf (fill-pointer buffer) 0)))))))))
+
+(defmacro indented-by((n os) &body body)
+  (let ((gn (gensym)))
+    `(let ((,gn (indentation-level ,os)))
+       (unwind-protect
+            (progn
+              (incf (indentation-level ,os) ,n)
+              ,@body)
+         (setf (indentation-level ,os) ,gn)))))
+
+(defun last-char(stream)
+  "Return last character written to the stream"
+  (let* ((buffer (line-buffer-of stream))
+         (l (fill-pointer buffer)))
+    (when (> l 0) (aref buffer (1- l)))))
+
+(defun unwrite-char(stream)
+  "Removes last character from buffer and returns it if possible. If
+buffer was empty returns nil."
+  (let* ((buffer (line-buffer-of stream))
+         (l (fill-pointer buffer)))
+    (when (> l 0) (vector-pop buffer))))

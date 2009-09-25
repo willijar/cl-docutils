@@ -1315,88 +1315,6 @@ not supported in Latex"))
         (part-append (evaluate node))
         (call-next-method)))
 
-(declaim (inline wsp))
-(defun wsp(c) (member c data-format-validation::+ws+ :test #'char=))
-
-(defclass line-wrap-stream(fundamental-character-output-stream
-                           trivial-gray-stream-mixin)
-  ((col-index :initform 0 :reader stream-line-column :accessor col-index-of
-              :documentation
-              "Column number where next character will be written")
-   (stream :initarg :stream :reader stream-of :type stream
-           :documentation "Actual stream being written to - must be capable
-of writing characters using write-char")
-   (line-break-test :initform #'wsp :reader line-break-test
-                    :documentation "Function returns true if character can be used as line break")
-   (line-buffer :type (vector character *) :reader line-buffer-of))
-  (:documentation "A simple line-wrapping stream filter"))
-
-(defmethod initialize-instance :after((stream line-wrap-stream)
-                                      &key (line-length 80) &allow-other-keys)
-  (setf (slot-value stream 'line-buffer)
-        (make-array line-length :element-type 'character :fill-pointer 0)))
-
-(defmethod close((stream line-wrap-stream) &key abort)
-  (unless abort (finish-output stream)))
-
-(defmethod stream-finish-output((stream line-wrap-stream))
-  (write-string (line-buffer-of stream) (stream-of stream))
-  (setf (fill-pointer (line-buffer-of stream)) 0)
-  (finish-output (stream-of stream)))
-
-(defmethod stream-force-output((stream line-wrap-stream))
-  (write-string (line-buffer-of stream) (stream-of stream))
-  (setf (fill-pointer (line-buffer-of stream)) 0)
-  (force-output (stream-of stream)))
-
-(defmethod stream-clear-output((stream line-wrap-stream))
-  (setf (fill-pointer (line-buffer-of stream)) 0)
-  (clear-output (stream-of stream)))
-
-(defun stream-line-length(stream)
-  (array-total-size (line-buffer-of stream)))
-
-(defmethod stream-start-line-p((stream line-wrap-stream))
-  (zerop (stream-line-column stream)))
-
-(defmethod stream-write-char((stream line-wrap-stream) (c character))
-  (let* ((buffer (line-buffer-of stream))
-         (len (array-total-size buffer)))
-    (cond
-      ((eql c #\newline)
-       (write-line buffer (stream-of stream))
-       (setf (fill-pointer buffer) 0
-             (col-index-of stream) 0))
-      (t
-       (vector-push c buffer)
-       (incf (col-index-of stream))))
-    (when (= (fill-pointer buffer) len)
-      ;; buffer full
-      (let ((p (position-if (line-break-test stream) buffer :from-end t)))
-        (cond
-          (p  ;; if there is a break character write up until it
-           (write-line (subseq buffer 0 p) (stream-of stream))
-           (setf (col-index-of stream) 0)
-           (do((i (1+ p) (1+ i))
-               (j 0 (1+ j)))
-              ((>= i len) (setf (fill-pointer buffer) j))
-             (setf (aref buffer j) (aref buffer i))))
-          (t ;; no break character - just empty out buffer
-           (write-string buffer (stream-of stream))
-           (setf (fill-pointer buffer) 0)))))))
-
-(defun last-char(stream)
-  "Return last character written to the stream"
-  (let* ((buffer (line-buffer-of stream))
-         (l (fill-pointer buffer)))
-    (when (> l 0) (aref buffer (1- l)))))
-
-(defun unwrite-char(stream)
-  "Removes last character from buffer and returns it if possible. If
-buffer was empty returns nil."
-  (let* ((buffer (line-buffer-of stream))
-         (l (fill-pointer buffer)))
-    (when (> l 0) (vector-pop buffer))))
 
 (defclass latex-output-stream(line-wrap-stream)
   ()
@@ -1412,15 +1330,15 @@ buffer was empty returns nil."
           stream))
     (#\newline
      (do ((lc (last-char stream) (last-char stream)))
-         ((not (and lc (wsp lc))))
+         ((not (and lc (wsp-char-p lc))))
        (unwrite-char stream))
      (call-next-method))
     (#\~
-     (when (wsp (last-char stream))  (unwrite-char stream))
+     (when (wsp-char-p (last-char stream))  (unwrite-char stream))
      (if (let ((lc (last-char stream))) (and lc (digit-char-p lc)))
          (write-sequence "\\," stream)
          (call-next-method)))
-    (t (unless (and (wsp c) (let ((lc (last-char stream))) (and lc (wsp lc))))
+    (t (unless (and (wsp-char-p c) (let ((lc (last-char stream))) (and lc (wsp-char-p lc))))
          (call-next-method))))
   c)
 

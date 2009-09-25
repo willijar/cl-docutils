@@ -42,7 +42,7 @@
 
 (defpackage docutils.utilities
     (:documentation "Common utilities used by several docutils components")
-    (:use :cl)
+    (:use :cl :trivial-gray-streams)
     (:import-from :docutils.nodes #:document #:line)
     (:import-from :data-format-validation #:split-string)
     (:export
@@ -54,7 +54,8 @@
      #:latex-double-quote-replacement #:namespace #:make-name #:*namespace*
      #:length-unit #:convert-length-unit #:when-bind #:while #:for
      #:is-suffix-p #:is-prefix-p #:copy-stream
-     #:find-file #:search-path*))
+     #:find-file #:search-path* #:line-wrap-stream #:indented-by
+     #:last-char #:unwrite-char))
 
 (defpackage :docutils
   (:documentation "Document handling and structured text parsing")
