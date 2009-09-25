@@ -1155,7 +1155,7 @@ parsed from an option marker match."
                                        content-offset option-block)
             (parse-directive-block directive state indented line-offset)
           (handler-bind
-              ((invalid-input
+              ((invalid-format
                 #'(lambda(e)
                     (report :error (write-to-string e :escape nil)
                             :line lineno
@@ -1221,18 +1221,14 @@ parsed from an option marker match."
     (when option-block
       (setf option-block (parse-extension-options state option-block)))
     (handler-bind
-        ((unknown-option
+        ((invalid-format
           #'(lambda(e)
-              (report :error (write-to-string e :escape nil))
-              (invoke-restart 'continue)))
-         (too-many-arguments
-          #'(lambda(e)
-              (report :info (write-to-string e :escape nil))
-              (invoke-restart 'ignore-extra-arguments)))
-         (invalid-input
-          #'(lambda(e)
-              (report :error (write-to-string e :escape nil))
-              (invoke-restart 'use-default))))
+              (let ((restart
+                     (find-if  #'find-restart
+                           '(use-default ignore-extra-arguments continue))))
+                (report (if (eql restart 'ignore-extra-arguments) :info :error)
+                      (write-to-string e :escape nil))
+                (invoke-restart restart)))))
       (values
        (when (directive-arguments directive)
          (parse-arguments (directive-arguments directive)

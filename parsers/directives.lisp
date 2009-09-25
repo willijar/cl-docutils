@@ -164,18 +164,20 @@ lambda-list::= ({var | (var [specializer])}*
   (if (member input '("top" "middle" "bottom" "left" "center" "right")
               :test #'string-equal)
       (intern input :keyword)
-      (invalid-input input "Not a valid alignment argument")))
+      (error 'invalid-format :type spec :value input
+             :reason "Not a valid alignment argument")))
 
 (defmethod parse-input((spec (eql 'class)) input &key &allow-other-keys)
   (when (is-nil-string input)
-    (invalid-input input "Class argument required but none supplied"))
+    (error 'invalid-format :type spec :value input
+           :reason "Class argument required but none supplied"))
   (join-strings
    (mapcar
     #'(lambda(s)
         (let ((id (make-id s)))
           (if (is-nil-string s)
-              (invalid-input input
-                             (format nil "cannot make ~S into a class name" s))
+              (error 'invalid-format :type spec :value input
+                     :reason (format nil "cannot make ~S into a class name" s))
               id)))
     (cl-ppcre:split "\\s+" input))))
 
@@ -195,12 +197,13 @@ lambda-list::= ({var | (var [specializer])}*
 
    (multiple-value-bind(value pos) (parse-integer input :junk-allowed t)
      (unless (and value (> value 0))
-       (invalid-input input "Size must be an non-negative integer"))
-
+       (error 'invalid-format :type spec :value input
+              :report "Size must be an non-negative integer"))
      (let ((unit (when (< pos (length input))
                    (let ((s (strip (subseq input pos))))
                      (when (find #\' input)
-                       (invalid-input s "Invalid length unit"))
+                       (error 'invalid-format :type spec :value s
+                              :reason "Invalid length unit"))
                      (intern (string-upcase s) :keyword)))))
        (length-unit unit) ;; called for side affect of checking unit
        (cons value unit))))
@@ -341,27 +344,28 @@ lambda-list::= ({var | (var [specializer])}*
     (loop
      (when (= 0 (length line)) (return attlist))
      (let* ((equals (position #\= line)))
-       (unless equals (invalid-input line "missing '=''"))
+       (unless equals
+         (error 'invalid-format :value line :reason "missing '=''"))
        (let ((attname (strip (subseq line 0 equals)))
              (data nil))
          (when (= 0 (length attname))
-           (invalid-input line "missing attribute before '='"))
+           (error 'invalid-format :value line
+                  :reason "missing attribute before '='"))
          (setf line (string-left-trim +wsp+ (subseq line (1+ equals))))
          (when (= 0 (length line))
-           (invalid-input line
-                          (format nil "missing value after ~s" attname)))
+           (error 'invalid-format :value line
+                  :reason (format nil "missing value after ~s" attname)))
          (let ((q (char line 0)))
            (if (find q "\"'")
                (let ((endquote (position q line :start 1)))
                  (unless endquote
-                   (invalid-input
-                    line
-                    (format nil "attribute ~S missing end quote ~S"
-                            attname q)))
+                   (error 'invalid-format :value line
+                          :reason (format nil "attribute ~S missing end quote ~S"
+                                          attname q)))
                  (when (and (< (1+ endquote) (length line))
                             (not (member (char line (1+ endquote)) +wsp+)))
-                   (invalid-input line
-                                  (format nil "attribute ~s end quote ~s not followed by whitespace" attname q)))
+                   (error 'invalid-format :value line
+                          :reason (format nil "attribute ~s end quote ~s not followed by whitespace" attname q)))
                  (setf data (subseq line 1 endquote)
                        line (subseq line (min (1+ endquote) (length line)))))
                (let ((space (position #\space line)))
@@ -401,14 +405,14 @@ lambda-list::= ({var | (var [specializer])}*
           (handler-case
               (let ((attlist (extract-name-value (first tokens))))
                 (setf (attribute node (caar attlist)) (cdar attlist)))
-            (invalid-input(c)
+            (invalid-format(c)
               (declare (ignore c))
               (setf (attribute node :name) (first tokens))))
           (dolist(token (rest tokens))
             (handler-case
                 (let ((attlist (extract-name-value token)))
                   (setf (attribute node (caar attlist)) (cdar attlist)))
-              (invalid-input(c)
+              (invalid-format(c)
                 (report :error
                         `("Error parsing meta tag attribute ~S: ~S"
                           ,token ,c)
