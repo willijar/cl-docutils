@@ -64,3 +64,10 @@
                 args)
           media-server)
          (namestring uri))))
+
+
+(in-package :docutils)
+
+(defun publish(src)
+  (write-html (merge-pathnames (make-pathname :type "html") src)
+              (read-rst src)))
