@@ -380,7 +380,8 @@ of writing characters using write-char")
 (defmethod initialize-instance :after((stream line-wrap-stream)
                                       &key (line-length 80) &allow-other-keys)
   (setf (slot-value stream 'line-buffer)
-        (make-array line-length :element-type 'character :fill-pointer 0)))
+        (make-array (or line-length 4048)
+                    :element-type 'character :fill-pointer 0)))
 
 (defmethod close((stream line-wrap-stream) &key abort)
   (unless abort (finish-output stream)))
@@ -449,7 +450,7 @@ of writing characters using write-char")
            (write-string buffer os)
            (setf (fill-pointer buffer) 0)))))))))
 
-(defmacro indented-by((n os) &body body)
+(defmacro with-block-indentation((n os) &body body)
   (let ((gn (gensym)))
     `(let ((,gn (indentation-level ,os)))
        (unwind-protect
