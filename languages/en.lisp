@@ -2,7 +2,11 @@
 ;; translation from en lanugauge to cannonical form
 ;; where same cannonical form occurs more than once, last occurance provides
 ;; cannonical inverse translation
-(("ab" . "abbreviation")
+(in-package :docutils.utilities)
+
+(setf (gethash "en" *translations*)
+      (parse-translations
+'(("ab" . "abbreviation")
  ("abbreviation" . "abbreviation")
  ("Abstract" . "abstract")
  ("ac" . "acronym")
@@ -78,4 +82,4 @@
  (:author-separators #\; #\,)
  (:babel . "english")     ;; latex babel language
  (:latex-quotes "``" "''") ;; latex quotes
- ("Warning" . "warning"))
+ ("Warning" . "warning"))))

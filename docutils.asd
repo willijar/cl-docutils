@@ -23,7 +23,8 @@
    (:file "utilities" :depends-on ("defpackage"))
    (:file "report" :depends-on ("defpackage" "utilities"))
    (:module "languages" :depends-on ("defpackage")
-            :components ((:file "translate")))
+            :components ((:file "translate")
+                         (:file "en" :depends-on ("translate"))))
    (:module "parsers"
             :depends-on ("publisher"
                          "nodes" "utilities" "report" "transforms" "languages")

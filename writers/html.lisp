@@ -198,7 +198,7 @@ specified. Default is not to do this (as recommended).")
              `((with-part(head)
                  (part-append
                   (format nil "<meta name=~S content=~S />~%"
-                          ,(translated-text name) (as-text ,node))))))
+                          (translated-text ,name) (as-text ,node))))))
     (set-first-last ,node)
     (part-append
      (start-tag ,node "tr")
@@ -775,7 +775,7 @@ specified. Default is not to do this (as recommended).")
   (part-append  "</span>"))
 
 (defmethod visit-node((writer html-writer) (node organization))
-  (add-docinfo-item(writer node "Organization")
+  (add-docinfo-item(writer node "Organisation")
                    (call-next-method)))
 
 (defun should-be-compact-p(node)

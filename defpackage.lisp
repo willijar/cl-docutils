@@ -49,7 +49,8 @@
      #:+wsp+ #:line-blank-p #:escape2null #:unescape #:split-lines
      #:make-id #:normalise-name #:whitespace-normalise-name #:indented-block
      #:indent-level #:line-length #:rstrip #:strip #:lstrip #:wsp-char-p
-     #:canonical-text #:translated-text #:*language* #:author-separators
+     #:canonical-text #:translated-text #:*language* #:*language-directory*
+     #:author-separators
      #:read-lines #:translate-text #:canonical-text #:babel #:latex-quotes
      #:latex-double-quote-replacement #:namespace #:make-name #:*namespace*
      #:length-unit #:convert-length-unit #:when-bind #:while #:for

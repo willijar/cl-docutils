@@ -1,4 +1,4 @@
-;; Attachments directive>
+;; Attachments directive
 ;; Copyright (C) 2009 Dr. John A.R. Williams
 
 ;; Author: Dr. John A.R. Williams <J.A.R.Williams@jarw.org.uk>
@@ -37,6 +37,7 @@
   (format os ".. attachment:: ~a~%" (attribute node :name))
   (with-block-indentation(3 os)
     (format os ":content-type: ~A~%~%" (attribute node :content-type))
+    (format os ":encoding: ~A~%~%" (attribute node :encoding))
     (write (attribute node :content) :stream os)))
 
 (defmethod visit-node(writer (node attachment))

@@ -222,7 +222,9 @@ in the document."))
 (defmethod visit-node :around ((writer writer) (document document))
   (let ((*document* document)
         (*current-writer* writer)
-        (docutils.utilities:*language* (setting :language document)))
+        (docutils.utilities:*language* (setting :language document))
+        (docutils.utilities::*language-directory*
+         (setting :translations document)))
     (dolist(part (parts writer))
       (if (symbolp part)
           (setf (slot-value writer part) nil)
@@ -384,11 +386,16 @@ references. This is the default.")
     "Set the threshold (<level>) at or above which system messages
 cause a halt")
    (:warnings
-    '(pathname :nil-allowed t) ,*error-output*
+    (pathname :nil-allowed t) ,*error-output*
     "Send the output of system messages (warnings) to <file>.")
    (:language
     string "en"
     "Specify the language of input text (ISO 639 2-letter identifier).")
+   (:translations
+    (pathname :nil-allowed t) ,docutils.utilities::*language-directory*
+    "Path to directory where language translations are stored. Each
+language has a file, named using its 2-letter identifier containing an
+a-list mapping translated form to a cannonical form.")
    (:record-dependencies
     '(pathname :nil-allowed t) nil
     "Write dependencies (caused e.g. by file inclusions) to <file>.")
