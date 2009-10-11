@@ -17,4 +17,4 @@
   :depends-on (:docutils :markup :media :inet :jarw)
   :components
   ((:file "markup")
-   (:file "media")))
+   (:file "media" :depends-on ("markup"))))
