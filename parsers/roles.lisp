@@ -179,10 +179,12 @@ use the \'role\' directive to create a new role with an associated format")
 (def-role eval(text)
   (handler-case
       (with-input-from-string(is text)
-        (make-instance
-         'docutils.nodes:inline-evaluation
-         :expression (read is  t nil)
-         :format (read is nil nil)))
+        (let ((arg1 (read is t nil))
+              (arg2 (read is nil nil)))
+          (make-instance
+           'docutils.nodes:inline-evaluation
+           :expression (or arg2 arg1)
+           :format (when arg2 arg1))))
     (error(e)
       (make-node 'problematic
                  (write-to-string e :escape nil :readably nil )))))
