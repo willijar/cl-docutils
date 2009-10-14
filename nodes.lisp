@@ -242,7 +242,7 @@ children in to-element"
        (add-child node (make-node 'text (join-strings item #\newline))))))
   node)
 
-(defclass evaluateable()
+(defclass evaluateable(node)
   ((language :initarg :language
              :initform :lisp :reader evaluation-language)
    (output-format
@@ -254,7 +254,7 @@ children in to-element"
    (result :documentation "Cached result obtained from evaluating expression"))
   (:documentation "Base for nodes which can be evaluated"))
 
-(defclass inline-evaluation(evaluateable text)
+(defclass inline-evaluation(evaluateable text-element)
   ()
   (:documentation "Inline evaluateable element"))
 
