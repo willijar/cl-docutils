@@ -424,20 +424,19 @@ corresponding footnote references."
   (collate-nodes(node document)
                 (typep node 'docutils.nodes:footnote)))
 
-
 (defun number-footnote-references(transform
                                   &optional (nameids (nameids (document (node transform))))
                                   (ids (ids (document (node transform)))))
   "Assign numbers to autonumbered footnote references."
   (do* ((labels (reverse (autofootnote-labels transform)) (rest labels))
-	(refs (autofootnote-refs (document (node transform))) (rest refs))
+        (refs (autofootnote-refs (document (node transform))) (rest refs))
         (label (first labels) (first labels))
-	(ref (first refs) (first refs)))
+        (ref (first refs) (first refs)))
        ((or (not ref) (not label))
         (when labels
           (let* ((msg (report :error
                               `("Too many autonumbered footnote references: only  corresponding footnotes available." ,(length (autofootnote-labels transform)))
-                              :node ref))
+                              :node (or ref (node transform))))
                  (msgid (set-id msg)))
             (dolist(ref refs)
               (unless (or (resolved ref) (attribute ref :refname))
