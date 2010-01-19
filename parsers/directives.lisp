@@ -194,7 +194,6 @@ lambda-list::= ({var | (var [specializer])}*
 
 (defmethod parse-input((spec (eql 'length)) input &key  &allow-other-keys)
    "Parser for entity sizes - returns a cons of a number and units"
-
    (multiple-value-bind(value pos) (parse-integer input :junk-allowed t)
      (unless (and value (> value 0))
        (error 'invalid-format :type spec :value input
@@ -205,8 +204,7 @@ lambda-list::= ({var | (var [specializer])}*
                        (error 'invalid-format :type spec :value s
                               :reason "Invalid length unit"))
                      (intern (string-upcase s) :keyword)))))
-       (length-unit unit) ;; called for side affect of checking unit
-       (cons value unit))))
+       (cons value (if (length-unit unit) unit :px)))))
 
 (defmethod parse-input((spec (eql 'scale)) input &key  &allow-other-keys)
   (let ((docutils.utilities::*length-units* '((:% . 75/8)

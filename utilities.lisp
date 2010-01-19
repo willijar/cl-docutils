@@ -264,6 +264,7 @@ for subsequent parsing"))
 
 (defparameter *length-units*
   '((:in . 1)
+    (nil . 75)
     (:cm . 254/100)
     (:em . 72/10)
     (:ex . 10)

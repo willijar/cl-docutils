@@ -67,7 +67,7 @@
 
 (defmethod visit-node((writer html-writer)
                       (node evaluateable))
- (case (output-format node)
+  (case (output-format node)
     (:markup
      (part-append
       (with-output-to-string(os) (markup:html os (evaluate node)))))

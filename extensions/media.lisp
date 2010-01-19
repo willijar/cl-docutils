@@ -36,7 +36,7 @@
 (export 'html-writer-using-media-server)
 
 (setq docutils.writer.markup::*markup-rst-writer*
- (make-instance 'docutils.writer.html:html-writer-using-media-server))
+ (make-instance 'html-writer-using-media-server))
 
 (defmethod html-url((writer html-writer-using-media-server)
                     (uri string) &rest args)
