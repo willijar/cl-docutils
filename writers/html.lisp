@@ -355,7 +355,7 @@ specified. Default is not to do this (as recommended).")
       (add-class (child node 0) "compound-first")
       (add-class (child node (1- n)) "compound-last")
       (dotimes(i (- n 2))
-        (add-class (child node (1+ i)) "compount-middle"))))
+        (add-class (child node (1+ i)) "compound-middle"))))
   (part-append
    (start-tag node "div"
               (list :class (format nil "compound~@[ ~A~]"
@@ -1061,7 +1061,5 @@ specified. Default is not to do this (as recommended).")
 
 (defmethod visit-node ((writer html-writer) (node docutils.nodes:evaluateable))
   (if (eql (output-format node) :html)
-        (part-append (evaluate node))
-        (call-next-method)))
-
-
+      (part-append  (evaluate node))
+      (call-next-method)))

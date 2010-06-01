@@ -273,7 +273,7 @@ lambda-list::= ({var | (var [specializer])}*
     (when align (setf (attribute figure-node :align) align))
     (add-child figure-node
                (make-image-nodes uri alt height width scale
-                                 "center" target class angle))
+                                 :top target class angle))
     (when content
       (let ((node (make-node 'element))
             (legend nil)
