@@ -716,10 +716,9 @@ specified. Default is not to do this (as recommended).")
   (part-append "</tt>"))
 
 (defmethod visit-node((writer html-writer) (node literal-block))
-  (part-append (start-tag node "pre" '(:class "literal-block"))
-                #\newline)
+  (part-append (start-tag node "pre" '(:class "literal-block")))
   (call-next-method)
-  (part-append #\newline "</pre>" #\newline))
+  (part-append "</pre>"))
 
 (defmethod visit-node((writer html-writer) (node docutils.nodes::meta))
   (with-part(head)
