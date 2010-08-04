@@ -226,7 +226,7 @@ Returns values:
     (let ((start t)
           (last--p nil))
       (loop
-         :for c :across string
+         :for c :across (normalise-name string)
          :do
          (cond
            (start
