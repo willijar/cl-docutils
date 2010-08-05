@@ -374,9 +374,9 @@ document structures.")
 in subclasses.  Recursively run the state machine for indented blocks"))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-(defparameter +wsp-transitions+
-  '((blank "^\\s*$" )
-    (indent "^ +" ))
+  (defparameter +wsp-transitions+
+    '((blank "^\\s*$" )
+      (indent "^ +" ))
     "Transitons for a wsp state machine"))
 
 (defclass wsp-state(state)

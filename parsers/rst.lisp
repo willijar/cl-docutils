@@ -303,8 +303,6 @@ back up the calling chain until the correct section level is reached."
 (defun inline-text(text lineno)
   (parse-inline rst-patterns text :line lineno ))
 
-
-
 (eval-when (:compile-toplevel :load-toplevel :execute)
 
 (defparameter +roman-numeral-map+
@@ -397,7 +395,7 @@ ordinal and the type value to be given in html")
      (anonymous "^__( +|$)")
      (line line)
      (text ,#'(lambda(s &key (start 0) (end (length s)))
-                  (values start end)) 'body)))))
+                (values start end)) 'body)))))
 
 (defclass body(rst-state)
   ((initial-transitions :allocation :class :initform +rst-transitions+))
