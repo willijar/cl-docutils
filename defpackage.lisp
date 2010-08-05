@@ -18,7 +18,7 @@
    #:resolvable #:backlinkable #:root #:titular #:predecorative
    #:prebibliographic #:bibliographic #:decorative #:body #:general
    #:sequential #:abmonition #:special #:invisible #:part
-   #:referential #:targetable #: #:title #:subtitle #:rubric
+   #:referential #:targetable #:title #:subtitle #:rubric
    #:docinfo #:author #:authors #:organization #:address #:contact
    #:version #:revision #:status #:date #:copyright #:decoration
    #:header #:footer #:structural #:section #:topic #:sidebar

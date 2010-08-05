@@ -373,10 +373,11 @@ document structures.")
   (:documentation "Handle an indented text block. Extend or override
 in subclasses.  Recursively run the state machine for indented blocks"))
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
 (defparameter +wsp-transitions+
   '((blank "^\\s*$" )
     (indent "^ +" ))
-  "Transitons for a wsp state machine")
+    "Transitons for a wsp state machine"))
 
 (defclass wsp-state(state)
   ((initial-transitions :allocation :class :initform +wsp-transitions+))

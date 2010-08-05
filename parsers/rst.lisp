@@ -166,7 +166,7 @@ content block and a callback to parse the content block")
 runs, to parse nested document structures."))
 
 (defmethod state-machine-run((state-machine nested-state-machine)
-                             (input-lines simple-vector)
+                             (input-lines vector)
                              &key
                              (input-offset 0)
                              node
@@ -303,6 +303,10 @@ back up the calling chain until the correct section level is reached."
 (defun inline-text(text lineno)
   (parse-inline rst-patterns text :line lineno ))
 
+
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+
 (defparameter +roman-numeral-map+
   '(("M"  . 1000) ("CM" . 900) ("D"  . 500) ("CD" . 400)
     ("C"  . 100) ("XC" . 90) ("L"  . 50) ("XL" . 40)
@@ -393,7 +397,7 @@ ordinal and the type value to be given in html")
      (anonymous "^__( +|$)")
      (line line)
      (text ,#'(lambda(s &key (start 0) (end (length s)))
-                (values start end)) 'body))))
+                  (values start end)) 'body)))))
 
 (defclass body(rst-state)
   ((initial-transitions :allocation :class :initform +rst-transitions+))
@@ -1479,10 +1483,12 @@ state should take over."))
     than* bullet list items, so it inherits the transition list created in
     `Body`."))
 
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
 (defun select-rst-transitions(&rest rest)
   (mapcan #'(lambda(trans) (when (member (transition-name trans) rest)
                              (list trans)))
-          +rst-transitions+))
+           +rst-transitions+)))
 
 (defun invalid-specialised-input(state match)
   "Not a compound element member. Abort this state machine."

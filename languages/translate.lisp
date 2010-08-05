@@ -17,7 +17,7 @@ containing an a-list mapping  translated form to a cannonical form")
 
 (eval-when(:compile-toplevel)
     (setq *language-directory*
-          (merge-pathnames (make-pathname :name :wild :type :unspecific)
+          (merge-pathnames (make-pathname :name :wild #-clisp :type #-clisp :unspecific)
                            *compile-file-truename*)))
 (defstruct translation
   (translated (make-hash-table :test #'equalp) :type hash-table)
