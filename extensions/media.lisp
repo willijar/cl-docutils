@@ -74,3 +74,57 @@
 (defun publish(src)
   (write-html (merge-pathnames (make-pathname :type "html") src)
               (read-rst src)))
+
+;;;; VIDEO handling
+
+(in-package :docutils)
+
+(defclass docutils.nodes::video(general element)())
+
+(in-package :docutils.parser.rst)
+
+(def-directive video(parent uri &option
+                            (height length)
+                            (width length)
+                            (align align)
+                            (class class))
+  (let((node (make-node 'video)))
+    (add-child parent node)
+    (when (find #\space uri)
+      (report :error "Image URI contains whitespace"
+              :line *current-line-number*))
+    (map nil #'(lambda(k v) (when v (setf (attribute node k) v)))
+         '(:height :width :align :uri :class)
+         (list height width align uri class))
+    node))
+
+(in-package :docutils.writer.html)
+
+(defmethod visit-node((writer html-writer) (node docutils.nodes::video))
+  (let* ((atts (list :controls 1))
+         (uri (attribute node :uri)))
+    (with-attributes(k v node) (setf (getf atts k) v))
+    (setf (getf atts :src) uri)
+    (remf atts :uri)
+    (flet ((set-size(symb)
+                   (when (getf atts symb)
+                     (setf (getf atts symb)
+                           (format nil "~,f~:[%~;~:*~A~]" (car (getf atts symb))
+                                   (cdr (getf atts symb)))))))
+      (set-size :width)
+      (set-size :height))
+    (part-append  (start-tag nil "div" (image-div-atts node)))
+    (part-append (start-tag node "video" atts) #\newline)
+    (part-append (format nil " <a href=~S>Play: ~A</a>~%" uri uri))
+    (part-append "</video>" #\newline)
+    (part-append "</div>" #\newline)))
+
+(in-package :docutils.writer.latex)
+
+(defmethod visit-node((writer latex-writer) (node docutils.nodes::video))
+  (part-append
+   (format nil
+           (if (typep (parent node) 'text-element)
+               " (Video: ~A) "
+               "~%~%{\bf Video:} ~A~%~%")
+           (attribute node :uri))))
