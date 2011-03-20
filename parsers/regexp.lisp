@@ -12,7 +12,9 @@
 ;;;Fragments of patterns used by transitions.
 
 (define-parse-tree-synonym wsp
-    (:char-class #\space #\newline #\Return #\tab #\Page #\Vt #\rubout))
+    (:char-class #\space #\newline #\Return #\tab #\Page #\rubout
+                 #+sbcl #\Vt
+                 #+ccl #\PageUp))
 
 (define-parse-tree-synonym alpha
     (:char-class (:range #\a #\z) (:range #\A #\Z)))
