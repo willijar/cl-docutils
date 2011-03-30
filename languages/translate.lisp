@@ -20,8 +20,8 @@ containing an a-list mapping  translated form to a cannonical form")
           (merge-pathnames (make-pathname :name :wild :type :unspecific)
                            *compile-file-truename*)))
 (defstruct translation
-  (translated (make-hash-table :test #'equalp) :type hash-table)
-  (canonical (make-hash-table :test #'equalp) :type hash-table))
+  (translated (make-hash-table :test #'equalp))
+  (canonical (make-hash-table :test #'equalp)))
 
 (defvar *translations* (make-hash-table :test #'equalp)
   "Hash table mapping language name to languages")

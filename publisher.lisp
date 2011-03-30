@@ -107,7 +107,7 @@ applied after parsing"))
 
 (defclass reader()
   ((settings
-    :initform nil :initarg :settings :type list
+    :initform nil :initarg :settings
     :documentation "a-list of overwriding reading and parsing settings"))
   (:documentation "Base classes to produce a document from input"))
 
@@ -186,12 +186,12 @@ applied after parsing"))
 ;;; -------------------------------------------------
 
 (defclass writer()
-  ((parts :type list :reader parts :initarg :parts
+  ((parts :reader parts :initarg :parts
           :documentation "List of slot names for component parts in
 the output. The writer should accumulate strings on each part using
 push.")
    (settings :initarg :settings
-             :type list :initform nil :reader settings
+             :initform nil :reader settings
              :documentation "Overwritten setting affecting document writing"))
   (:documentation "Base Class for writing a document"))
 

@@ -110,11 +110,11 @@ content block and a callback to parse the content block")
 (defgeneric initial-quoted(state match))
 
 (defclass rst-state-machine(wsp-state-machine)
-  ((document :type list :accessor document
+  ((document :accessor document
              :documentation "Top level Document Markup")
-   (node :type list :accessor node
+   (node :accessor node
          :documentation "Current node in document")
-   (match-titles :type boolean :accessor match-titles :initform t))
+   (match-titles :accessor match-titles :initform t))
   (:default-initargs :initial-state 'body :states *rst-state-classes*)
   (:documentation "reStructuredText's master StateMachine."))
 
@@ -158,9 +158,9 @@ content block and a callback to parse the content block")
         (error "Restructured text state machine results not nil")))))
 
 (defclass nested-state-machine(wsp-state-machine)
-  ((node :type list :accessor node
+  ((node :accessor node
          :documentation "Current node in document")
-   (match-titles :type boolean :accessor match-titles :initform t))
+   (match-titles :accessor match-titles :initform t))
   (:default-initargs :initial-state 'body :states *rst-state-classes*)
   (:documentation "StateMachine run from within other StateMachine
 runs, to parse nested document structures."))

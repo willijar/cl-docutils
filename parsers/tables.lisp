@@ -34,7 +34,7 @@
    (separator-pattern :initarg :separator-pattern)
    (head-body-sep :reader head-body-sep :initform nil
                   :documentation "Index of head body separator")
-   (done :type array :reader done))
+   (done :reader done))
   (:documentation "Abstract superclass for the common parts of the
 syntax-specific parsers."))
 
@@ -70,7 +70,7 @@ syntax-specific parsers."))
              :message "The head/body row separator may not be the first or last line of the table."))))
 
 (defclass grid-table-parser(table-parser)
-  ((cells :type list :initform nil :accessor cells)
+  ((cells :initform nil :accessor cells)
    (colseps :accessor colseps :initform '(0))
    (rowseps :accessor rowseps :initform '(0)))
   (:default-initargs :separator-pattern "^\\+=[=+]+=\\+$")

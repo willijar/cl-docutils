@@ -79,11 +79,11 @@ specified (default)"))
     node))
 
 (defclass node()
-  ((line :type integer :initarg :line :reader line
+  ((line :initarg :line :reader line
 	 :initform *current-line-number*
 	 :documentation
 	 "The line number (1-based) of the beginning of this Node in source.")
-   (parent :type node :reader parent
+   (parent :reader parent
 	   :documentation "The parent of this node in the document tree"))
   (:documentation "Abstract base class of nodes in a document tree"))
 
@@ -115,7 +115,7 @@ specified (default)"))
     (setf (slot-value child 'parent) node)))
 
 (defclass text(node)
-  ((text :type vector :initform "" :initarg :text))
+  ((text :initform "" :initarg :text))
   (:documentation "Instances are terminal nodes (leaves) containing
 text only; no child nodes or attributes."))
 
@@ -246,7 +246,7 @@ children in to-element"
   ((language :initarg :language
              :initform :lisp :reader evaluation-language)
    (output-format
-    :type symbol :initform nil :initarg :format :reader output-format
+    :initform nil :initarg :format :reader output-format
     :documentation "Specifies what format the output is in (for writers).")
    (expression :initarg :expression :reader expression
                :documentation "Read expression to be evaluated
@@ -486,9 +486,9 @@ children of ~A" child node))
 ;;; mixins
 
 (defclass resolvable()
-  ((resolved :type boolean :initform nil :accessor resolved)))
+  ((resolved :initform nil :accessor resolved)))
 (defclass backlinkable()
-  ((backrefs :type list :initform nil :reader backrefs)))
+  ((backrefs :initform nil :reader backrefs)))
 
 (defun add-backref(element id)
   (push id (slot-value element 'backrefs)))
@@ -515,7 +515,7 @@ children of ~A" child node))
 (defclass part()())
 (defclass referential(resolvable)())
 (defclass targetable(resolvable)
-  ((referenced :type boolean :initform nil :accessor referenced)))
+  ((referenced :initform nil :accessor referenced)))
 
 (defmethod add-child :after(node (child targetable)  &optional index)
   (declare (ignore index))
@@ -573,7 +573,7 @@ children of ~A" child node))
   ((namespace :reader namespace :initarg :namespace :initform nil)
    (settings :reader settings :initform (make-hash-table) :initarg :settings
              :documentation "Runtime settings data record.")
-   (current-id :type integer :initform 0 :initarg :id-start
+   (current-id :initform 0 :initarg :id-start
                :accessor current-id :documentation "current id."))
   (:default-initargs :line 0)
   (:documentation "The main document root element"))
