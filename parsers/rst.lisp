@@ -784,12 +784,12 @@ parsed from an option marker match."
         (setf blank-finish nil)
         (previous-line (state-machine state) (- len p))
         (setf text-block (subseq text-block 0 p))
-        (unless (> p 1)
+        (unless (> (length text-block) 1)
           (return-from isolate-grid-table
             (values (malformed-table state text-block "Table must have at least 1 row") blank-finish)))))
       ;;; check end
-    (let ((p (position-if #'(lambda(s) (scan grid-table-top-pattern s))
-                          text-block :start 2 :from-end t))) ; find bottom
+    (let ((p (when (> (length text-block) 1) (position-if #'(lambda(s) (scan grid-table-top-pattern s))
+                            text-block :start 2 :from-end t)))) ; find bottom
       (unless p
         (malformed-table state text-block)
         (return-from isolate-grid-table))

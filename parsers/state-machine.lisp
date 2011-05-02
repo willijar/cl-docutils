@@ -155,7 +155,8 @@ INPUT-SOURCE: name or path of source of INPUT_LINES."
 
 (defun next-line(state-machine &optional (n 1))
   (with-slots (line-offset input-lines) state-machine
-    (if (>= (incf line-offset n) (length input-lines))
+    (incf line-offset n)
+    (if (or (< line-offset 0) (>= line-offset (length input-lines)))
         (throw 'state-machine-eof nil)
         (current-line state-machine))))
 
