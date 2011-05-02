@@ -226,7 +226,7 @@ Returns values:
     (let ((start t)
           (last--p nil))
       (loop
-         :for c :across string
+         :for c :across (normalise-name string)
          :do
          (cond
            (start
@@ -369,13 +369,13 @@ if not found"
     :initform 0 :reader indentation-level :initarg :indentation-level
     :documentation "Current indentation level")
    (indentation-character
-    :type character :initform #\space :reader indentation-character)
-   (stream :initarg :stream :reader stream-of :type stream
+    :initform #\space :reader indentation-character)
+   (stream :initarg :stream :reader stream-of
            :documentation "Actual stream being written to - must be capable
 of writing characters using write-char")
    (line-break-test :initform #'wsp-char-p :reader line-break-test
                     :documentation "Function returns true if character can be used as line break")
-   (line-buffer :type (vector character *) :reader line-buffer-of))
+   (line-buffer :reader line-buffer-of))
   (:documentation "A simple line-wrapping stream filter"))
 
 (defmethod initialize-instance :after((stream line-wrap-stream)

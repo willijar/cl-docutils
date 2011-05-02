@@ -32,12 +32,12 @@ when no role is specified for a piece of interpreted text.")
   (parse-role *default-interpreted-role* text option-values content))
 
 (defclass role()
-  ((name :type string :initarg :name)))
+  ((name :initarg :name)))
 
 (defclass standard-role(role)
-  ((options :initform nil :type list :initarg :options)
+  ((options :initform nil :initarg :options)
    (content :initform nil :initarg :content )
-   (function :type function :initarg :function)))
+   (function :initarg :function)))
 
 (defmethod parse-role((role standard-role) text
                       &optional
@@ -47,8 +47,8 @@ when no role is specified for a piece of interpreted text.")
   (funcall (slot-value role 'function) text option-values content))
 
 (defclass custom-role(role)
-  ((base-role :type standard-role :initarg :base-role)
-   (option-values :initarg :option-values :type list :initform nil)
+  ((base-role :initarg :base-role)
+   (option-values :initarg :option-values :initform nil)
    (supplied-content :initarg :content :initform nil)))
 
 (defmethod parse-role((role custom-role) text
@@ -61,7 +61,7 @@ when no role is specified for a piece of interpreted text.")
 
 (defclass generic-custom-role(standard-role)
   ((options :initform '((:class class))
-	    :type list :initarg :options)))
+	    :initarg :options)))
 
 (defmethod parse-role((role generic-custom-role) text &optional
                       option-values

@@ -36,17 +36,17 @@ machine and the new state object")
 (defclass state-machine()
   ((input-lines :initarg :input-lines :reader input-lines
 		:documentation "vector of input lines (without newlines)")
-   (states :type list :initform nil :initarg :states :accessor states
+   (states :initform nil :initarg :states :accessor states
 	   :documentation "a list of allowed state classe names.")
    (initial-state :initarg :initial-state :reader initial-state
 		  :documentation "the initial state name.")
    (current-state :reader current-state
 		  :documentation "the current state.")
    (input-offset
-    :initform 0 :reader input-offset :type fixnum :initarg :input-offset
+    :initform 0 :reader input-offset :initarg :input-offset
     :documentation "Offset of input-lines from the beginning of the file.")
    (line-offset
-    :initform -1 :accessor line-offset :type fixnum
+    :initform -1 :accessor line-offset
     :documentation
     "Current input line offset from beginning of input-lines."))
   (:documentation
@@ -436,8 +436,8 @@ machine for indented blocks"
 
 (defstruct match
   "Results of a transition match"
-  (start 0 :type fixnum) ;; start index of match
-  (end 0 :type fixnum) ;; end index of match
+  (start 0) ;; start index of match
+  (end 0) ;; end index of match
   string ;; line being matched
   reg-starts ;; indices of register starts
   reg-ends) ;; other arguments to be passed from matcher to transition

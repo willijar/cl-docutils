@@ -20,11 +20,11 @@
 
 (defstruct directive
   "Directive Specification"
-  (name "" :type string)
-  (arguments nil :type list)
-  (allow-spaces-p t :type boolean)
-  (options nil :type list)
-  (content-p nil :type boolean)
+  (name "")
+  (arguments nil)
+  (allow-spaces-p t)
+  (options nil)
+  (content-p nil)
   (function))
 
 (defmacro def-directive(name (nodevar &rest lambda-list) &body body)
