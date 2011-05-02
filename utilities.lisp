@@ -12,10 +12,10 @@
 
 (defvar *tab-size* 8 "The amount of space that a tab is equivalent to")
 
-(defparameter +wsp+ '(#\space #\tab #\return #\newline #\Vt #\Page)
-  "White space characters")
+(defparameter +wsp+ (mapcar #'code-char '(32 9 13 10 12 11))
+  "White space characters: Space, Tab, Return, Newline, Page, PageUp")
 
-(deftype wsp() '(member #\space #\tab #\return #\newline #\Vt #\Page))
+(deftype wsp () `(member ,@(mapcar #'code-char '(32 9 13 10 12 11))))
 
 (declaim (inline wsp-char-p line-blank-p))
 (defun wsp-char-p(c) (typep c 'wsp))
