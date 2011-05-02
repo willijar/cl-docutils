@@ -437,24 +437,24 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
                   (char-replace
                    '((#\$ ."$")
                      (#\& . "&")
-                     (#\† . "dag")        ;; dagger
-                     (#\‡ . "ddag")
-                     ('\§ .q "S")          ;; section
-                     (#\  . "P")           ;; paragraph
-                     (#\¶ ."P")
+                     (#.(code-char 8224) . "dag")  ;; †
+                     (#.(code-char 8225) . "ddag") ;; #\‡
+                     (#.(code-char 167) . "S")     ;; §
+                     (#.(code-char 8233) . "P")    ;;   paragraph
+                     (#.(code-char 182) ."P")      ;; ¶
                      (#\^ ."textasciicircum")
                      (#\% . "%")
                      (#\# ."#")
-                     (#\® . "texttrademark")
-                     (#\© . "copyright")
-                     (#\♠ . "spadesuit") ;; spades
-                     (#\♥ ."heartsuit")  ;; hearts
-                     (#\♦ . "diamondsuit");; diamonds
-                     (#\♣ . "clubsuit")
+                     (#.(code-char 174) . "texttrademark") ;; ®
+                     (#.(code-char 169) . "copyright")     ;; ©
+                     (#.(code-char 9824) . "spadesuit")    ;; ♠
+                     (#.(code-char 9829) ."heartsuit")     ;; ♥
+                     (#.(code-char 9830) . "diamondsuit")  ;; ♦
+                     (#.(code-char 9827) . "clubsuit")     ;; ♣
                      #+nil(#\~ ."textasciitilde"))
                    "{\\" "}")
                   (char-replace
-                   '((#\⇔ . "Leftrightarrow"))
+                   '((#.(code-char 8660) . "Leftrightarrow")) ;; ⇔
                    "{\\ensuremathmode{\\" "}}")
                   (write-char c os))))))
     ;; Separate compound characters, e.g. "--" to "-{}-".(The
@@ -1323,8 +1323,8 @@ not supported in Latex"))
 
 (defmethod stream-write-char((stream latex-output-stream) (c character))
   (case c
-    ((code-char 8220) (write-sequence "``" stream))
-    (#\” (write-sequence "''" stream))
+    (#.(code-char 8220) (write-sequence "``" stream))
+    (#.(code-char 8221) (write-sequence "''" stream))
     (#\" (write-sequence
           (if (alphanumericp (last-char stream)) "''" "``")
           stream))
