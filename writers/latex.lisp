@@ -1323,7 +1323,7 @@ not supported in Latex"))
 
 (defmethod stream-write-char((stream latex-output-stream) (c character))
   (case c
-    (#\“ (write-sequence "``" stream))
+    ((code-char 8220) (write-sequence "``" stream))
     (#\” (write-sequence "''" stream))
     (#\" (write-sequence
           (if (alphanumericp (last-char stream)) "''" "``")
