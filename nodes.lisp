@@ -649,13 +649,6 @@ outside of the flow of the document's main text."))
   (declare (ignore index))
   (typep child 'field))
 
-(defmethod allowed-child-p((parent field) child &optional index)
-  (let ((index (or index (number-children parent))))
-    (typecase child
-      (system-message t)
-      (field-name (evenp index))
-      (field-body (oddp index)))))
-
 (defmethod print-object((node field-name) stream)
   (print-unreadable-object (node stream :type t :identity t)
     (format stream "~S ~@[line ~D ~]"  (as-text node) (line node))))
@@ -732,6 +725,13 @@ outside of the flow of the document's main text."))
 
 (defclass system-message(docutils.nodes:special
 			 prebibliographic element backlinkable)())
+
+(defmethod allowed-child-p((parent field) child &optional index)
+  (let ((index (or index (number-children parent))))
+    (typecase child
+      (system-message t)
+      (field-name (evenp index))
+      (field-body (oddp index)))))
 
 (defmethod add-child((node text-element) (child system-message)
                      &optional index)
