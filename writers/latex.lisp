@@ -1348,3 +1348,6 @@ not supported in Latex"))
          (call-next-method writer document os)
       (close os))))
 
+(defmethod write-part((writer latex-writer) (part (eql 'fragment)) (os stream))
+  (write-part writer 'docinfo os)
+  (write-part writer 'body os))

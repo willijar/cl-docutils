@@ -28,7 +28,7 @@
   (defmethod html((stream stream) (tag (eql 'markup::rst))
                   &optional attr content)
     (declare (ignore attr))
-    (when content
+    (when (and content (first content))
       (html stream
             (with-lock(mutex) ;; share state so lock
               (read-document (if (listp content) (car content) content)
