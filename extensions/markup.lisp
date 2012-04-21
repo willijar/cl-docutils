@@ -21,33 +21,37 @@
 
 (export '(markup::rst) (find-package :markup))
 
-(defvar *markup-rst-reader* (make-instance 'docutils.parser.rst:rst-reader))
-(defvar *markup-rst-writer* (make-instance 'docutils.writer.html:html-writer))
+(defvar *markup-rst-reader*  'docutils.parser.rst:rst-reader)
+(defvar *markup-rst-writer* 'docutils.writer.html:html-writer)
 
-(let ((mutex (make-mutex)))
-  (defmethod html((stream stream) (tag (eql 'markup::rst))
-                  &optional attr content)
-    (declare (ignore attr))
-    (when (and content (first content))
-      (html stream
-            (with-lock(mutex) ;; share state so lock
-              (read-document (if (listp content) (car content) content)
-                             *markup-rst-reader*)))))
-  (defmethod html((stream stream) (document docutils.nodes:document)
-                  &optional attr content)
-    (declare (ignore attr content))
-     (with-lock(mutex)
-       (docutils:visit-node *markup-rst-writer* document)
-       (docutils:write-part *markup-rst-writer* 'body stream)))
-  (defmethod html(stream (node docutils.nodes:node) &optional attr content)
-    (declare (ignore attr content))
-    ;; we clone the document with settings - note parent of node will
-    ;; be the original parent NOT the clone.
-    (let ((document (make-instance
-                     'docutils.nodes:document
-                     :settings (docutils::settings (document node)))))
-      (setf (slot-value document 'docutils::children) (list node))
-      (html stream document))))
+(defmethod html((stream stream) (tag (eql 'markup::rst))
+                &optional attr content)
+  (when (first content)
+    (html stream
+          (read-document
+           (first content)
+           (make-instance (getf attr :reader *markup-rst-reader*)))
+          attr
+          content)))
+
+(defmethod html((stream stream) (document docutils.nodes:document)
+                &optional attr content)
+  (declare (ignore content))
+    (let ((writer (make-instance
+                  (getf attr :writer *markup-rst-writer*)
+                  :settings attr)))
+      (docutils:visit-node writer document)
+      (docutils:write-part writer 'body stream)))
+
+(defmethod html(stream (node docutils.nodes:node) &optional attr content)
+  (declare (ignore attr content))
+  ;; we clone the document with settings - note parent of node will
+  ;; be the original parent NOT the clone.
+  (let ((document (make-instance
+                   'docutils.nodes:document
+                   :settings (docutils::settings (document node)))))
+    (setf (slot-value document 'docutils::children) (list node))
+    (html stream document)))
 
 (defun markup::parse-restructured-text(text)
   `(markup::rst ,text))

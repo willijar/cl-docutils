@@ -578,6 +578,14 @@ children of ~A" child node))
   (:default-initargs :line 0)
   (:documentation "The main document root element"))
 
+(defmethod (setf settings)((value list) (document document))
+  (if (consp (first value))
+      (map 'nil #'(lambda(v) (setf (gethash (car v) (settings document)) (cdr v)))
+           value)
+      (loop
+         :for a :on value :by #'cddr
+         :do (setf (gethash (first a) (settings document)) (second a)))))
+
 (defmethod initialize-instance :after ((document document)
 				       &key source-path &allow-other-keys)
   (when source-path

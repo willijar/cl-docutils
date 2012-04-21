@@ -26,7 +26,6 @@
    #:transition-name #:transitions #:transition-match
    #:insert-lines #:apply-transition))
 
-
 (defpackage :docutils.parser.tables
    (:documentation "CALS Table parser")
    (:use :cl :docutils :docutils.utilities)
