@@ -685,9 +685,8 @@ specified. Default is not to do this (as recommended).")
 
 (defmethod visit-node((writer html-writer) (node list-item))
   (part-append (start-tag node "li"))
-  (when (> (number-children node) 0)
-    (add-class (child node 0) "first")
-    (call-next-method))
+  (set-first-last node)
+  (call-next-method)
   (part-append "</li>" #\newline))
 
 (defun words-and-spaces(text)

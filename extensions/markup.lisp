@@ -37,11 +37,13 @@
 (defmethod html((stream stream) (document docutils.nodes:document)
                 &optional attr content)
   (declare (ignore content))
-    (let ((writer (make-instance
-                  (getf attr :writer *markup-rst-writer*)
-                  :settings attr)))
-      (docutils:visit-node writer document)
-      (docutils:write-part writer 'body stream)))
+  (unless (getf attr :initial-header-level)
+    (setf (getf attr :initial-header-level) (1+  markup:*section-level*)))
+  (let ((writer (make-instance
+                 (getf attr :writer *markup-rst-writer*)
+                 :settings attr)))
+    (docutils:visit-node writer document)
+    (docutils:write-part writer 'body stream)))
 
 (defmethod html(stream (node docutils.nodes:node) &optional attr content)
   (declare (ignore attr content))
