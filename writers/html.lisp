@@ -570,10 +570,7 @@ specified. Default is not to do this (as recommended).")
          (format nil " <code class=\"math\">~A</code> " text)))))
 
 (defmethod visit-node((writer html-writer) (node math))
-  (math-out writer
-            (concatenate
-             'string
-             "$" (whitespace-normalise-name (as-text (child node 0))) "$")))
+  (math-out writer (whitespace-normalise-name (as-text (child node 0)))))
 
 (defmethod visit-node((writer html-writer) (node equation))
     (part-append #\newline "<p class=\"equation\">")

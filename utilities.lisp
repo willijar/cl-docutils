@@ -102,7 +102,7 @@ trimmed text."
 
 (defun unescape(text &key restore-backslashes (start 0) end)
   "Return a string with nulls removed or restored to backslashes.
-    Backslash-escaped spaces are also removed."
+   Backslash-escaped spaces are also removed."
   (with-output-to-string(os)
     (with-input-from-string(is text :start start :end end)
       #+debug(when  (< (or end (length text)) start)
