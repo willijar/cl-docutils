@@ -31,8 +31,7 @@
           (read-document
            (first content)
            (make-instance (getf attr :reader *markup-rst-reader*)))
-          attr
-          content)))
+          attr)))
 
 (defmethod html((stream stream) (document docutils.nodes:document)
                 &optional attr content)

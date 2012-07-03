@@ -255,7 +255,7 @@ back up the calling chain until the correct section level is reached."
                (setf *section-bubble-up-kludge* t))
              (previous-line (state-machine state) (1+ (length style)))
                                         ;let parent section re-evaluate
-             (throw 'state-machine-eof nil))
+(throw 'state-machine-eof nil))
             ((= level *section-level*)) ;; immediate subsection
             ((title-inconsistent)))))) ;; invalid subsection
 
@@ -1962,7 +1962,7 @@ as ordinary text because it's so short."
   (state-correction lines))
 
 (defun state-correction(&optional (lines 1))
-  (invoke-restart 'state-correction 'body :transitions '(text) :lines lines))
+  (invoke-restart 'state-correction 'body :limit-transitions '(text) :lines lines))
 
 (defclass quoted-literal-block(rst-state)
   ((initial-transitions

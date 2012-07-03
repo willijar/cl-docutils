@@ -129,15 +129,17 @@ INPUT-SOURCE: name or path of source of INPUT_LINES."
              (transition-correction(new-transition)
                (previous-line state-machine)
                (setf transitions (list (assoc new-transition transitions))))
-             (state-correction(next-state-name &key transitions lines)
+             (state-correction(next-state-name &key limit-transitions lines)
                (previous-line state-machine lines)
-               (setf state (get-state state-machine next-state-name)
-                     transitions (or (mapcar
-                                      #'(lambda(tr)
-                                          (member tr (transitions state)
-                                                  :key #'car))
-                                      transitions)
-                                     (transitions state)) )))))
+               (setf state (get-state state-machine next-state-name))
+               (setf transitions
+                     (if limit-transitions
+                         (mapcan
+                          #'(lambda(tr)
+                              (when (member (car tr) limit-transitions)
+                                (list tr)))
+                          (transitions state))
+                         (transitions state)) )))))
         (extend-results (eof state))))
     (nreverse results)))
 
