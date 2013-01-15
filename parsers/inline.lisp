@@ -295,7 +295,8 @@ The :start and :end keyword arguments have their usual meanings."
       (if uri-match
           (let* ((uri (cl-ppcre::regex-replace
                        "\\s+" (match-group uri-match 0) ""))
-                 (text (unescape (subseq rawtext 0 (match-start uri-match))))
+                 (text (rstrip
+                        (unescape (subseq rawtext 0 (match-start uri-match)))))
                  (refname (normalise-name text))
                  (reference (reference-node text)))
             (setf (attribute reference :refuri) uri)
