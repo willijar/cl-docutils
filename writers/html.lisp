@@ -63,7 +63,7 @@
       (let ((writer (make-instance 'html-writer)))
         (visit-node writer document)
         (write-document writer document os))
-      (with-open-file(s os :direction :output :if-exists :supersede :if-does-not-exist :create)
+      (with-open-file (s os :direction :output :if-exists :supersede :if-does-not-exist :create)
         (docutils:write-html s document))))
 
 (defmethod write-part((writer html-writer) (part (eql 'fragment)) (os stream))

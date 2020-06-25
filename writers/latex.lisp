@@ -266,9 +266,12 @@ Default fallback method is remove \"-\" and \"_\" chars from docutils_encoding."
   (:documentation "Docutils latex writer"))
 
 (defun docutils:write-latex(os document)
-  (let ((writer (make-instance 'latex-writer)))
-    (visit-node writer document)
-    (write-document writer document os)))
+  (if (streamp os)
+      (let ((writer (make-instance 'latex-writer)))
+	(visit-node writer document)
+	(write-document writer document os))
+      (with-open-file (s os :direction :output :if-exists :supersede :if-does-not-exist :create)
+        (docutils:write-latex s document))))
 
 (defmacro collect-parts(&body body)
   `(progn
